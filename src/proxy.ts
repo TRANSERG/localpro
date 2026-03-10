@@ -9,7 +9,7 @@ const isSupabaseConfigured =
   supabaseUrl.startsWith('http') &&
   supabaseKey !== 'your_supabase_anon_key'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // If Supabase is not configured, bypass auth and allow all routes
   if (!isSupabaseConfigured) {
     const pathname = request.nextUrl.pathname
