@@ -9,7 +9,7 @@ const isSupabaseConfigured =
   supabaseUrl.startsWith('http') &&
   supabaseKey !== 'your_supabase_anon_key'
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // If Supabase is not configured, bypass auth and allow all routes
   if (!isSupabaseConfigured) {
     const pathname = request.nextUrl.pathname
@@ -43,7 +43,12 @@ export async function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
   const isAuthRoute   = pathname.startsWith('/login') || pathname.startsWith('/auth')
-  const isPublicRoute = isAuthRoute || pathname === '/' || pathname.startsWith('/connect') || pathname.startsWith('/review')
+  const isPublicRoute =
+    isAuthRoute ||
+    pathname === '/' ||
+    pathname.startsWith('/connect') ||
+    pathname.startsWith('/review') ||
+    pathname.startsWith('/api/review/')
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
