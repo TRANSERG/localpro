@@ -590,12 +590,12 @@ function BusinessInfoTab({ clientId, syncedAt }: { clientId: string; syncedAt: s
     if (!info) return
     setSaving(true)
     setError(null)
-    const updates = {
-      title:         draft.title         !== undefined ? draft.title         : undefined,
-      description:   draft.description   !== undefined ? draft.description   : undefined,
-      primary_phone: draft.primary_phone !== undefined ? draft.primary_phone : undefined,
-      website_uri:   draft.website_uri   !== undefined ? draft.website_uri   : undefined,
-    }
+    const updates: Partial<Pick<GmbBusinessInfo, 'title' | 'description' | 'primary_phone' | 'website_uri'>> = {}
+    if (draft.title         !== undefined) updates.title         = draft.title         ?? null
+    if (draft.description   !== undefined) updates.description   = draft.description   ?? null
+    if (draft.primary_phone !== undefined) updates.primary_phone = draft.primary_phone ?? null
+    if (draft.website_uri   !== undefined) updates.website_uri   = draft.website_uri   ?? null
+
     const res = await fetch('/api/gmb/info', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clientId, ...updates }),
