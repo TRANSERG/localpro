@@ -103,7 +103,7 @@ export function ConnectClient({
           </div>
 
           <p className="mt-8 text-[12px] text-gray-400">
-            Secured by LocalRank Pro · Google only shares access to your business listing
+            Secured by VyapaarGrow · Google only shares access to your business listing
           </p>
         </div>
       </div>
@@ -140,7 +140,7 @@ export function ConnectClient({
               <polyline points="9 22 9 12 15 12 15 22" stroke="white" strokeWidth={2.5} />
             </svg>
           </div>
-          <span className="text-[13px] font-semibold text-gray-500">LocalRank <span className="text-blue-600">Pro</span></span>
+          <span className="text-[13px] font-semibold text-gray-500">VyapaarGrow</span>
         </div>
 
         {/* Client avatar + name */}
@@ -201,7 +201,7 @@ export function ConnectClient({
         </p>
       </div>
 
-      <p className="mt-6 text-[11px] text-gray-400">Secured by LocalRank Pro</p>
+      <p className="mt-6 text-[11px] text-gray-400">Secured by VyapaarGrow</p>
     </div>
   )
 }

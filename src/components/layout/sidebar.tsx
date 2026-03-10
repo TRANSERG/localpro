@@ -62,7 +62,7 @@ export function Sidebar() {
             <Building2 className="h-4 w-4 text-white" />
           </div>
           <div className={cn('leading-none flex-1', collapsed && 'lg:hidden')}>
-            <span className="text-sm font-bold text-white">LocalRank</span>
+            <span className="text-sm font-bold text-white">VyapaarGrow</span>
             <span className="text-sm font-bold text-blue-400"> Pro</span>
           </div>
           {/* Mobile close button */}
@@ -109,7 +109,7 @@ export function Sidebar() {
 
         {/* Footer */}
         <div className={cn('border-t border-white/10 px-4 py-3', collapsed && 'lg:hidden')}>
-          <p className="text-[10px] text-gray-600 leading-relaxed">LocalRank Pro v1.0</p>
+          <p className="text-[10px] text-gray-600 leading-relaxed">VyapaarGrow v1.0</p>
           <p className="text-[10px] text-gray-700">Pune, India · Phase 1</p>
         </div>
       </aside>

@@ -37,7 +37,7 @@ export default function LoginPage() {
             <Building2 className="h-6 w-6 text-white" />
           </div>
           <h1 className="text-xl font-bold text-gray-900">
-            LocalRank <span className="text-blue-600">Pro</span>
+            VyapaarGrow
           </h1>
           <p className="text-sm text-gray-500 mt-1">Local SEO Agency Platform · Pune</p>
         </div>

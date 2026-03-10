@@ -823,7 +823,7 @@ function ShareLinkModal({
         </div>
 
         <p className="mt-4 text-[11px] text-gray-400 text-center">
-          The client does not need a LocalRank Pro account · Secured by HMAC-signed state
+          The client does not need a VyapaarGrow account · Secured by HMAC-signed state
         </p>
       </div>
     </div>

@@ -324,7 +324,7 @@ export function ReviewClient({ client }: { client: PublicClientInfo | null }) {
         </div>
 
         <p className="mt-6 text-center text-[11px] text-gray-400">
-          Powered by LocalRank Pro
+          Powered by VyapaarGrow
         </p>
       </div>
     </div>

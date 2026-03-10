@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "LocalRank Pro — Local SEO Agency Platform",
+  title: "VyapaarGrow — Local SEO Agency Platform",
   description: "Manage local SEO clients, GBP audits, keywords, reviews, and more.",
 };
 
