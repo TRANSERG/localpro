@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getMockClient, getMockKeywordsForClient } from '@/lib/mock-data'
-
-const geminiApiKey = process.env.GOOGLE_GEMINI_API_KEY
+import { getGeminiClient, hasGeminiKeys } from '@/lib/gemini-client'
 
 // ── Prompt builder ──────────────────────────────────────────────────────────
 
@@ -99,7 +97,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (!geminiApiKey) {
+    if (!hasGeminiKeys()) {
       return NextResponse.json(
         { ok: false, error: 'Gemini API key not configured' },
         { status: 500 },
@@ -168,7 +166,7 @@ export async function POST(req: NextRequest) {
       language: lang,
     })
 
-    const genAI = new GoogleGenerativeAI(geminiApiKey)
+    const genAI = getGeminiClient()
     const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' })
     const result = await model.generateContent(prompt)
     const text = result.response.text()
