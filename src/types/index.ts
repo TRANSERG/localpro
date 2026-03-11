@@ -63,6 +63,9 @@ export interface Client {
   client_user_id: string | null
   // joined
   assigned_profile?: Profile
+  // populated by getClients() via branding_profiles join
+  branding_logo_url?: string | null
+  branding_primary_color?: string | null
 }
 
 export interface GBPAuditItem {

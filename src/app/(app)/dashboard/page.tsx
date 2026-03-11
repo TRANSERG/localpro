@@ -2,9 +2,10 @@ import { Header } from '@/components/layout/header'
 import { StatCard } from '@/components/ui/stat-card'
 import { getClients, getProfiles, getTasks, getReviews, getKeywords, getPerformanceChartData } from '@/lib/db'
 import { mockPerformanceData } from '@/lib/mock-data'
-import { formatINR, getStatusClasses, getInitials, formatDate, cn } from '@/lib/utils'
+import { formatINR, getStatusClasses, formatDate, cn } from '@/lib/utils'
 import { Users, Star, Search, CalendarDays, IndianRupee, AlertCircle, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { PerformanceChart } from '@/components/dashboard/performance-chart'
+import { ClientAvatar } from '@/components/ui/client-avatar'
 import Link from 'next/link'
 
 function MoMBadge({ pct }: { pct: number | null }) {
@@ -107,9 +108,7 @@ export default async function DashboardPage() {
                       <tr key={client.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
-                            <div className="h-8 w-8 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: client.color_tag ?? '#3b82f6' }}>
-                              {getInitials(client.business_name)}
-                            </div>
+                            <ClientAvatar client={client} size="lg" className="rounded-xl" />
                             <div>
                               <p className="font-semibold text-gray-900">{client.business_name}</p>
                               <p className="text-[11px] text-gray-400">{client.area}, {client.city}</p>
@@ -188,11 +187,7 @@ export default async function DashboardPage() {
                 return (
                   <div key={r.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {client && (
-                        <div className="h-6 w-6 rounded flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: client.color_tag ?? '#3b82f6' }}>
-                          {getInitials(client.business_name)}
-                        </div>
-                      )}
+                      {client && <ClientAvatar client={client} size="sm" className="rounded" />}
                       <div>
                         <p className="text-xs font-semibold text-gray-900">{client?.business_name}</p>
                         <p className="text-[11px] text-gray-500">⭐ {r.average_rating} · +{r.new_reviews} new</p>
@@ -223,11 +218,7 @@ export default async function DashboardPage() {
                 const rankColor = rank && rank <= 3 ? 'text-green-600 bg-green-50' : rank && rank <= 10 ? 'text-yellow-600 bg-yellow-50' : 'text-red-600 bg-red-50'
                 return (
                   <div key={kw.id} className="flex items-center gap-2">
-                    {client && (
-                      <div className="h-5 w-5 rounded flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ backgroundColor: client.color_tag ?? '#3b82f6' }}>
-                        {getInitials(client.business_name)}
-                      </div>
-                    )}
+                    {client && <ClientAvatar client={client} size="xs" className="rounded" />}
                     <p className="text-xs text-gray-700 flex-1 truncate">{kw.keyword}</p>
                     <span className={cn('text-[11px] font-bold rounded px-1.5 py-0.5', rankColor)}>#{rank ?? '—'}</span>
                   </div>

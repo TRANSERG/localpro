@@ -84,16 +84,36 @@ export function ReviewQRModal({ client, onClose }: ReviewQRModalProps) {
     ctx.fillStyle = BRAND_LIGHT
     roundRect(ctx, 32, 132, W - 64, 56, 12, BRAND_LIGHT)
 
-    // Initials avatar
-    const initials = client.business_name
-      .split(' ').slice(0, 2)
-      .map(w => w[0]).join('').toUpperCase()
-    ctx.fillStyle = client.color_tag ?? BRAND_SECONDARY
-    roundRect(ctx, 44, 140, 40, 40, 10, client.color_tag ?? BRAND_SECONDARY)
-    ctx.fillStyle  = '#ffffff'
-    ctx.font       = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-    ctx.textAlign  = 'center'
-    ctx.fillText(initials, 64, 166)
+    // Logo or initials avatar
+    if (client.branding_logo_url) {
+      try {
+        const logoImg = await loadImage(client.branding_logo_url)
+        roundRect(ctx, 44, 140, 40, 40, 10, '#ffffff')
+        ctx.save()
+        ctx.beginPath()
+        ctx.roundRect(44, 140, 40, 40, 10)
+        ctx.clip()
+        ctx.drawImage(logoImg, 44, 140, 40, 40)
+        ctx.restore()
+      } catch {
+        // fallback to initials
+        const ini = client.business_name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+        roundRect(ctx, 44, 140, 40, 40, 10, client.color_tag ?? BRAND_SECONDARY)
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(ini, 64, 166)
+      }
+    } else {
+      const initials = client.business_name
+        .split(' ').slice(0, 2)
+        .map(w => w[0]).join('').toUpperCase()
+      roundRect(ctx, 44, 140, 40, 40, 10, client.color_tag ?? BRAND_SECONDARY)
+      ctx.fillStyle  = '#ffffff'
+      ctx.font       = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+      ctx.textAlign  = 'center'
+      ctx.fillText(initials, 64, 166)
+    }
 
     ctx.textAlign  = 'left'
     ctx.fillStyle  = '#111827'
@@ -127,7 +147,7 @@ export function ReviewQRModal({ client, onClose }: ReviewQRModalProps) {
     })
     ctx.drawImage(qrCanvas, QR_X, QR_Y, QR_SIZE, QR_SIZE)
 
-    // VyapaarGrow logo overlay on QR (centre)
+    // Logo overlay on QR (centre) — client logo if available, else VyapaarGrow "V"
     const logoSize = 44
     const logoX    = QR_X + (QR_SIZE - logoSize) / 2
     const logoY    = QR_Y + (QR_SIZE - logoSize) / 2
@@ -136,12 +156,31 @@ export function ReviewQRModal({ client, onClose }: ReviewQRModalProps) {
     ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2 + 4, 0, Math.PI * 2)
     ctx.fillStyle = '#ffffff'
     ctx.fill()
-    // Coloured "V" letter badge
-    roundRect(ctx, logoX, logoY, logoSize, logoSize, 10, BRAND_SECONDARY)
-    ctx.fillStyle  = '#ffffff'
-    ctx.font       = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-    ctx.textAlign  = 'center'
-    ctx.fillText('V', logoX + logoSize / 2, logoY + logoSize / 2 + 7)
+    if (client.branding_logo_url) {
+      try {
+        const qrLogoImg = await loadImage(client.branding_logo_url)
+        roundRect(ctx, logoX, logoY, logoSize, logoSize, 10, '#ffffff')
+        ctx.save()
+        ctx.beginPath()
+        ctx.roundRect(logoX, logoY, logoSize, logoSize, 10)
+        ctx.clip()
+        ctx.drawImage(qrLogoImg, logoX, logoY, logoSize, logoSize)
+        ctx.restore()
+      } catch {
+        roundRect(ctx, logoX, logoY, logoSize, logoSize, 10, BRAND_SECONDARY)
+        ctx.fillStyle  = '#ffffff'
+        ctx.font       = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+        ctx.textAlign  = 'center'
+        ctx.fillText('V', logoX + logoSize / 2, logoY + logoSize / 2 + 7)
+      }
+    } else {
+      // Coloured "V" letter badge (VyapaarGrow brand)
+      roundRect(ctx, logoX, logoY, logoSize, logoSize, 10, BRAND_SECONDARY)
+      ctx.fillStyle  = '#ffffff'
+      ctx.font       = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+      ctx.textAlign  = 'center'
+      ctx.fillText('V', logoX + logoSize / 2, logoY + logoSize / 2 + 7)
+    }
 
     // ── Instruction text ───────────────────────────────────────────────────
     ctx.textAlign  = 'center'
@@ -306,6 +345,16 @@ function roundRect(
   ctx.closePath()
   ctx.fillStyle = fill
   ctx.fill()
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
+  })
 }
 
 function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number) {

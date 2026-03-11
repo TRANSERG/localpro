@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Client, Profile, COLOR_TAGS, LANGUAGES } from '@/types'
 import { formatINR, formatDate, getStatusClasses, getInitials, cn } from '@/lib/utils'
+import { ClientAvatar } from '@/components/ui/client-avatar'
 import {
   Plus, Search, Globe, Phone, MessageCircle,
   ExternalLink, Edit2, Trash2, X, QrCode,
@@ -485,10 +486,7 @@ export default function ClientsPage({
                     <tr key={client.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-xl text-white text-xs font-bold shrink-0"
-                            style={{ backgroundColor: client.color_tag ?? '#3b82f6' }}>
-                            {getInitials(client.business_name)}
-                          </div>
+                          <ClientAvatar client={client} size="xl" className="rounded-xl" />
                           <div className="min-w-0">
                             <p className="font-semibold text-gray-900 text-sm truncate">{client.business_name}</p>
                             <p className="text-xs text-gray-400 truncate">{client.area ? `${client.area}, ` : ''}{client.city}</p>

@@ -15,6 +15,7 @@ interface PublicClientInfo {
   color_tag: string | null
   google_review_url: string | null
   language_preference: string | null
+  branding_logo_url?: string | null
 }
 
 type Step = 'rating' | 'loading' | 'suggestions' | 'not_found' | 'no_review_url'
@@ -77,12 +78,18 @@ function BrandedHeader({ client }: { client: PublicClientInfo }) {
 
   return (
     <div className="mb-5 flex flex-col items-center text-center">
-      <div
-        className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-sm"
-        style={{ backgroundColor: client.color_tag ?? '#3b82f6' }}
-      >
-        {initials}
-      </div>
+      {client.branding_logo_url ? (
+        <div className="mb-3 h-16 w-16 rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-sm">
+          <img src={client.branding_logo_url} alt={client.business_name} className="h-full w-full object-contain" />
+        </div>
+      ) : (
+        <div
+          className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-sm"
+          style={{ backgroundColor: client.color_tag ?? '#3b82f6' }}
+        >
+          {initials}
+        </div>
+      )}
       <h2 className="text-xl font-bold text-gray-900">{client.business_name}</h2>
       {location && <p className="mt-0.5 text-sm text-gray-500">{location}</p>}
       {client.business_type && (

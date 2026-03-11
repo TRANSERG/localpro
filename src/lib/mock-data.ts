@@ -1,6 +1,6 @@
 import type {
   Client, Profile, Keyword, Task, ReviewTracker,
-  Competitor, MonthlyReport,
+  Competitor, MonthlyReport, BrandingProfile,
 } from '@/types'
 
 export function getMockClient(clientId: string): Client | undefined {
@@ -111,6 +111,37 @@ export const mockReviews: ReviewTracker[] = [
 export const mockCompetitors: Competitor[] = [
   { id: 'comp1', client_id: 'c1', created_at: '', updated_at: '', competitor_name: 'SmileCare Dental', gbp_link: 'https://g.page/smilecare', review_count: 145, average_rating: 4.6, ranking_position: 1, our_client_ranking: 3, strengths: 'More reviews, older GBP', weaknesses: 'No recent posts', last_checked_date: '2024-03-01', notes: null },
   { id: 'comp2', client_id: 'c3', created_at: '', updated_at: '', competitor_name: 'PowerFit Gym', gbp_link: 'https://g.page/powerfit', review_count: 98, average_rating: 4.5, ranking_position: 2, our_client_ranking: 1, strengths: 'Strong Instagram presence', weaknesses: 'No GBP posts', last_checked_date: '2024-03-01', notes: null },
+]
+
+export const mockBrandingProfiles: BrandingProfile[] = [
+  {
+    id: 'br1', client_id: 'c1', created_at: '', updated_at: '',
+    logo_url: null,
+    primary_color: '#1d4ed8', secondary_color: '#93c5fd',
+    brand_tone: 'Professional',
+    content_pillars: ['Oral Health Tips', 'Patient Testimonials', 'Before & After', 'Team Spotlights'],
+    content_dos: 'Use clear CTAs\nPost patient testimonials (with consent)\nShare educational dental tips\nUse bright, clean photos',
+    content_donts: 'Avoid medical jargon\nNo stock photos — use real clinic images\nDon\'t post without proofreading',
+    hashtag_bank: '#PuneDentist #SharmaDental #KothrudDentist #SmilePune #DentalCarePune #OralHealth #DentalClinic',
+    caption_templates: '✨ Template 1 — Tip Post:\n[Tip headline]\n\nDid you know? [2-3 sentence tip]\n\nBook your check-up today: [link]\n\n[hashtags]\n\n---\n✨ Template 2 — Testimonial:\n"[Patient quote]" — [First name], Kothrud\n\nThank you for trusting us with your smile! 😊\n\n[hashtags]',
+    approved_post_types: ['Tips', 'Reviews', 'Photos'],
+    posting_frequency: 3,
+    notes: 'Client prefers English content. Always get approval before posting.',
+  },
+  {
+    id: 'br2', client_id: 'c3', created_at: '', updated_at: '',
+    logo_url: null,
+    primary_color: '#d97706', secondary_color: '#fde68a',
+    brand_tone: 'Bold',
+    content_pillars: ['Workout Tips', 'Member Transformations', 'Class Schedules', 'Nutrition Advice'],
+    content_dos: 'Use energetic, motivational language\nPost transformation photos with consent\nHighlight special offers\nUse action shots from gym floor',
+    content_donts: 'Avoid overly salesy tone\nNo blurry photos\nDon\'t promise specific weight loss results',
+    hashtag_bank: '#FitZonePune #GymBaner #PuneFitness #FitnessMotivation #GymLife #BanerGym #TransformationTuesday',
+    caption_templates: '💪 Template 1 — Motivation Monday:\nMonday motivation: [motivational line]\n\n[2-3 sentence body about fitness]\n\nJoin us this week! 📞 [phone]\n\n[hashtags]\n\n---\n🏆 Template 2 — Member Story:\nMeet [first name]! They transformed in [X] months at FitZone 💥\n\n[Their journey in 2-3 lines]\n\nStart your journey → [link]\n\n[hashtags]',
+    approved_post_types: ['Tips', 'Photos', 'Events', 'Behind the Scenes'],
+    posting_frequency: 5,
+    notes: 'Very active on Instagram. Prioritize Reels format.',
+  },
 ]
 
 export const mockPerformanceData = [

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { cn, getInitials, formatDate } from '@/lib/utils'
+import { ClientAvatar } from '@/components/ui/client-avatar'
 import type { Client, GmbConnectionStatus, GmbReview, GmbPost, GmbBusinessInfo, NewGmbPost } from '@/types'
 import {
   CheckCircle2, AlertCircle, RefreshCw, Wifi, WifiOff,
@@ -958,10 +959,7 @@ export default function GmbPage({
                     active ? 'bg-blue-50' : 'hover:bg-gray-50',
                   )}
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-[10px] font-bold shrink-0"
-                    style={{ backgroundColor: client.color_tag ?? '#3b82f6' }}>
-                    {getInitials(client.business_name)}
-                  </div>
+                  <ClientAvatar client={client} size="lg" />
                   <div className="flex-1 min-w-0">
                     <p className={cn('text-xs font-semibold truncate', active ? 'text-blue-700' : 'text-gray-900')}>
                       {client.business_name}
@@ -991,10 +989,7 @@ export default function GmbPage({
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl text-white font-bold"
-                      style={{ backgroundColor: selectedClient.color_tag ?? '#3b82f6' }}>
-                      {getInitials(selectedClient.business_name)}
-                    </div>
+                    <ClientAvatar client={selectedClient} size="2xl" className="rounded-xl" />
                     <div>
                       <h2 className="text-base font-bold text-gray-900">{selectedClient.business_name}</h2>
                       <p className="text-sm text-gray-400">{selectedClient.area ? `${selectedClient.area}, ` : ''}{selectedClient.city}</p>

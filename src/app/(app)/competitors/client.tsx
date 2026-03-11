@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Client, Competitor } from '@/types'
-import { cn, getInitials } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+import { ClientAvatar } from '@/components/ui/client-avatar'
 import { Plus, Star, ExternalLink, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 export default function CompetitorsPage({
@@ -46,9 +47,7 @@ export default function CompetitorsPage({
                   <div>
                     {client && (
                       <div className="flex items-center gap-2 mb-3">
-                        <div className="h-6 w-6 rounded flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: client.color_tag ?? '#3b82f6' }}>
-                          {getInitials(client.business_name)}
-                        </div>
+                        <ClientAvatar client={client} size="sm" className="rounded" />
                         <span className="text-xs font-semibold text-gray-500">{client.business_name}</span>
                       </div>
                     )}

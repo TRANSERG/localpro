@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Client, MonthlyReport } from '@/types'
-import { cn, formatMonthYear, calcMoM, getInitials } from '@/lib/utils'
+import { cn, formatMonthYear, calcMoM } from '@/lib/utils'
+import { ClientAvatar } from '@/components/ui/client-avatar'
 import { Plus, TrendingUp, TrendingDown, Phone, Globe, Eye, Navigation, Check } from 'lucide-react'
 
 function MoM({ current, prev }: { current: number | null; prev: number | null }) {
@@ -70,9 +71,7 @@ export default function ReportsPage({
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                   {client && (
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-xl flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: client.color_tag ?? '#3b82f6' }}>
-                        {getInitials(client.business_name)}
-                      </div>
+                      <ClientAvatar client={client} size="xl" className="rounded-xl" />
                       <div>
                         <p className="font-bold text-gray-900 text-sm">{client.business_name}</p>
                         <p className="text-xs text-gray-500">{formatMonthYear(report.month_year)}</p>

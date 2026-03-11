@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Client, Keyword, KEYWORD_TYPES } from '@/types'
-import { cn, getStatusClasses, getInitials } from '@/lib/utils'
+import { cn, getStatusClasses } from '@/lib/utils'
+import { ClientAvatar } from '@/components/ui/client-avatar'
 import { Plus, Check, X as XIcon } from 'lucide-react'
 
 function RankBadge({ rank }: { rank: number | null }) {
@@ -77,9 +78,7 @@ export default function KeywordsPage({
                       <td className="px-4 py-3">
                         {client && (
                           <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: client.color_tag ?? '#3b82f6' }}>
-                              {getInitials(client.business_name)}
-                            </div>
+                            <ClientAvatar client={client} size="sm" />
                             <span className="text-xs text-gray-600 hidden xl:block truncate max-w-24">{client.business_name}</span>
                           </div>
                         )}

@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Client, Profile, Task, TaskStatus } from '@/types'
-import { cn, getStatusClasses, formatDate, getInitials } from '@/lib/utils'
+import { cn, getStatusClasses, formatDate } from '@/lib/utils'
+import { ClientAvatar } from '@/components/ui/client-avatar'
 import { Plus, CheckCircle2, Clock, Circle, AlertTriangle } from 'lucide-react'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 
@@ -124,9 +125,7 @@ export default function TasksPage({
                     <td className="px-4 py-3">
                       {client ? (
                         <div className="flex items-center gap-1.5">
-                          <div className="h-5 w-5 rounded flex items-center justify-center text-white text-[9px] font-bold" style={{ backgroundColor: client.color_tag ?? '#3b82f6' }}>
-                            {getInitials(client.business_name)}
-                          </div>
+                          <ClientAvatar client={client} size="xs" className="rounded" />
                           <span className="text-xs text-gray-600 truncate max-w-24">{client.business_name}</span>
                         </div>
                       ) : <span className="text-xs text-gray-400">Agency</span>}

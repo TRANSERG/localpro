@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Client, GBPAuditItem, GBPAuditResponse } from '@/types'
 import { cn, getStatusClasses } from '@/lib/utils'
+import { ClientAvatar } from '@/components/ui/client-avatar'
 import { CheckCircle2, Circle, Clock, ChevronDown } from 'lucide-react'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 
@@ -110,9 +111,7 @@ export default function GBPAuditPage({
                 <button key={c.id} onClick={() => setSelectedClientId(c.id)}
                   className={cn('shrink-0 text-left rounded-xl p-3 border transition-colors min-w-[150px] lg:min-w-0 lg:w-full', selectedClientId === c.id ? 'bg-white border-blue-200 shadow-sm' : 'bg-gray-50 border-transparent hover:bg-white hover:border-gray-200')}>
                   <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-lg flex items-center justify-center text-white text-[11px] font-bold shrink-0" style={{ backgroundColor: c.color_tag ?? '#3b82f6' }}>
-                      {c.business_name.charAt(0)}
-                    </div>
+                    <ClientAvatar client={c} size="md" />
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-gray-900 truncate">{c.business_name}</p>
                       <p className={cn('text-[10px] font-medium', pctC >= 75 ? 'text-green-600' : pctC >= 50 ? 'text-yellow-600' : 'text-red-600')}>{pctC}% complete</p>

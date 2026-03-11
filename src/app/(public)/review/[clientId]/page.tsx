@@ -10,6 +10,7 @@ interface PublicClientInfo {
   color_tag: string | null
   google_review_url: string | null
   language_preference: string | null
+  branding_logo_url?: string | null
 }
 
 export default async function ReviewPage({
@@ -31,6 +32,7 @@ export default async function ReviewPage({
       color_tag: mockClient.color_tag,
       google_review_url: mockClient.google_review_url,
       language_preference: mockClient.language_preference,
+      branding_logo_url: mockClient.branding_logo_url,
     }
     return <ReviewClient client={info} />
   }
@@ -40,17 +42,22 @@ export default async function ReviewPage({
     const { createClient } = await import('@supabase/supabase-js')
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
     )
-    const { data: client } = await supabase
+    const { data: raw } = await supabase
       .from('clients')
-      .select('id, business_name, business_type, area, city, color_tag, google_review_url, language_preference')
+      .select('id, business_name, business_type, area, city, color_tag, google_review_url, language_preference, branding_profiles(logo_url)')
       .eq('id', clientId)
       .eq('is_active', true)
       .single()
 
-    if (client) {
-      return <ReviewClient client={client as PublicClientInfo} />
+    if (raw) {
+      const bp = Array.isArray(raw.branding_profiles) ? raw.branding_profiles[0] : (raw.branding_profiles ?? null)
+      const client: PublicClientInfo = {
+        ...raw,
+        branding_logo_url: (bp as { logo_url?: string | null } | null)?.logo_url ?? null,
+      }
+      return <ReviewClient client={client} />
     }
   } catch {
     // Supabase not configured — fall through to not-found

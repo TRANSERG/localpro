@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import { Header } from '@/components/layout/header'
 import { Client, ReviewTracker } from '@/types'
-import { cn, formatMonthYear, getInitials } from '@/lib/utils'
+import { cn, formatMonthYear } from '@/lib/utils'
+import { ClientAvatar } from '@/components/ui/client-avatar'
 import { Plus, Star, Check, X as XIcon } from 'lucide-react'
 
 function Stars({ rating }: { rating: number | null }) {
@@ -77,9 +78,7 @@ export default function ReviewsPage({
                     <td className="px-4 py-3">
                       {client && (
                         <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-lg flex items-center justify-center text-white text-[10px] font-bold shrink-0" style={{ backgroundColor: client.color_tag ?? '#3b82f6' }}>
-                            {getInitials(client.business_name)}
-                          </div>
+                          <ClientAvatar client={client} size="md" />
                           <span className="text-xs font-semibold text-gray-900 truncate max-w-28">{client.business_name}</span>
                         </div>
                       )}

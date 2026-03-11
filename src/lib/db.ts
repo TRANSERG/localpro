@@ -12,10 +12,18 @@ export async function getClients(): Promise<Client[]> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('clients')
-    .select('*')
+    .select('*, branding_profiles(logo_url, primary_color)')
     .eq('is_active', true)
     .order('business_name')
-  return (data ?? []) as Client[]
+  return ((data ?? []) as any[]).map(c => {
+    const bp = Array.isArray(c.branding_profiles) ? c.branding_profiles[0] : (c.branding_profiles ?? null)
+    const { branding_profiles: _bp, ...rest } = c
+    return {
+      ...rest,
+      branding_logo_url: bp?.logo_url ?? null,
+      branding_primary_color: bp?.primary_color ?? null,
+    }
+  }) as Client[]
 }
 
 export async function getProfiles(): Promise<Profile[]> {
