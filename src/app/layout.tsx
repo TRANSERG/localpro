@@ -7,6 +7,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "VyapaarGrow — Local SEO Agency Platform",
   description: "Manage local SEO clients, GBP audits, keywords, reviews, and more.",
+  icons: {
+    icon: "/vypaargrow-logo.svg",
+  },
 };
 
 export default function RootLayout({
