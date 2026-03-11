@@ -7,8 +7,9 @@ import { Client, Profile, COLOR_TAGS, LANGUAGES } from '@/types'
 import { formatINR, formatDate, getStatusClasses, getInitials, cn } from '@/lib/utils'
 import {
   Plus, Search, Globe, Phone, MessageCircle,
-  ExternalLink, Edit2, Trash2, X,
+  ExternalLink, Edit2, Trash2, X, QrCode,
 } from 'lucide-react'
+import { ReviewQRModal } from '@/components/ui/review-qr-modal'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 
 // ─── Stable helper components (defined OUTSIDE any other component) ───────────
@@ -391,6 +392,7 @@ export default function ClientsPage({
   const [filterStatus, setFilterStatus] = useState('All')
   const [showModal, setShowModal] = useState(false)
   const [editClient, setEditClient] = useState<Client | undefined>()
+  const [qrClient, setQrClient] = useState<Client | undefined>()
   const [isPending, startTransition] = useTransition()
 
   const filtered = clients.filter(c => {
@@ -529,6 +531,14 @@ export default function ClientsPage({
                       <td className="px-4 py-3 text-xs text-gray-500">{formatDate(client.next_followup_date)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
+                          {client.google_review_url && (
+                            <button
+                              onClick={() => setQrClient(client)}
+                              title="Copy review URL / Download QR"
+                              className="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50">
+                              <QrCode className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                           <button onClick={() => openEdit(client)} className="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50">
                             <Edit2 className="h-3.5 w-3.5" />
                           </button>
@@ -557,6 +567,13 @@ export default function ClientsPage({
           profiles={initialProfiles}
           onClose={() => setShowModal(false)}
           onSaved={handleSaved}
+        />
+      )}
+
+      {qrClient && (
+        <ReviewQRModal
+          client={qrClient}
+          onClose={() => setQrClient(undefined)}
         />
       )}
     </div>
