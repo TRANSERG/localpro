@@ -226,7 +226,7 @@ const FAQS = [
   },
   {
     q: 'Can you help businesses outside Pune?',
-    a: 'Yes! While we started in Pune, we now serve local businesses across Maharashtra and other Indian cities including Mumbai, Nashik, Aurangabad, Kolhapur, and Nagpur. Our strategies work for any location-based business in India.',
+    a: 'Yes! While we started in Pune, we now serve local businesses across Maharashtra and other Indian cities including Mumbai, Nashik, Chh. SambhajiNagar (Aurangabad), Kolhapur, and Nagpur. Our strategies work for any location-based business in India.',
   },
 ]
 
@@ -895,7 +895,7 @@ export default function LandingPage() {
               <div className="mt-4">
                 <p className="text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">We Serve</p>
                 <p className="text-xs text-gray-500 leading-relaxed">
-                  Pune · Mumbai · Nashik · Aurangabad · Kolhapur · Nagpur · Pan India
+                  Pune · Mumbai · Nashik · Chh. SambhajiNagar (Aurangabad) · Kolhapur · Nagpur · Pan India
                 </p>
               </div>
             </div>
