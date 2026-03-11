@@ -297,9 +297,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
-              <MapPin size={16} className="text-white" />
-            </div>
+            <img src="/vypaargrow-logo.svg" alt="VyapaarGrow" className="h-10 w-auto" />
             <div>
               <span className="font-extrabold text-lg text-gray-900 tracking-tight leading-none">VyapaarGrow</span>
               <p className="text-[10px] text-gray-500 leading-none">by TransergLLP</p>
@@ -842,9 +840,7 @@ export default function LandingPage() {
             {/* Brand */}
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-3">
-                <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                  <MapPin size={15} className="text-white" />
-                </div>
+                <img src="/vypaargrow-logo.svg" alt="VyapaarGrow" className="h-9 w-auto" />
                 <div>
                   <span className="font-extrabold text-white text-base leading-none">VyapaarGrow</span>
                   <p className="text-[10px] text-gray-500 leading-none">by TransergLLP</p>
