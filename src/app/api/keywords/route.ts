@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
       priority: k.priority,
       used_in_gbp: false,
       used_on_website: false,
-      is_selected: false,
     }))
 
     const { data, error } = await supabase
