@@ -478,3 +478,8 @@ ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS language_preference text DEF
 CREATE POLICY "anon read keywords for review"
   ON public.keywords FOR SELECT TO anon
   USING (true);
+
+-- ============================================================
+-- ADD is_selected TO KEYWORDS
+-- ============================================================
+alter table public.keywords add column if not exists is_selected boolean not null default false;

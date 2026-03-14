@@ -94,11 +94,20 @@ export default function KeywordsPage({
   // ── Actions ───────────────────────────────────────────────────────────────
 
   const toggleKeyword = (id: string) => {
+    const willBeSelected = !selected.has(id)
     setSelected(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      willBeSelected ? next.add(id) : next.delete(id)
       return next
     })
+    // Persist to DB (skip temp IDs that haven't been saved yet)
+    if (!id.startsWith('ai-')) {
+      fetch(`/api/keywords/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_selected: willBeSelected }),
+      }).catch(console.error)
+    }
   }
 
   const openModal = () => {
@@ -147,37 +156,71 @@ export default function KeywordsPage({
     })
   }
 
-  const addSelected = () => {
+  const addSelected = async () => {
     const toAdd = suggestions.filter((_, i) => checked.has(i))
     const existing = new Set(keywords.map(k => k.keyword.toLowerCase()))
+    const filtered = toAdd.filter(s => !existing.has(s.keyword.toLowerCase()))
 
-    const newKeywords: Keyword[] = toAdd
-      .filter(s => !existing.has(s.keyword.toLowerCase()))
-      .map((s, i) => ({
-        id: `ai-${Date.now()}-${i}`,
-        client_id: suggestClientId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        keyword: s.keyword,
-        keyword_type: s.keyword_type,
-        monthly_search_volume: s.monthly_search_volume,
-        competition: s.competition,
-        priority: s.priority,
-        used_in_gbp: false,
-        used_on_website: false,
-        current_ranking: null,
-        target_ranking: null,
-        last_updated: null,
-        notes: null,
-        is_selected: false,
-      }))
+    if (filtered.length === 0) {
+      setModalOpen(false)
+      return
+    }
 
-    setKeywords(prev => [...prev, ...newKeywords])
-    // Switch to that client's tab so they can see the new keywords
+    // Optimistically add with temp IDs while saving
+    const now = new Date().toISOString()
+    const tempKeywords: Keyword[] = filtered.map((s, i) => ({
+      id: `ai-${Date.now()}-${i}`,
+      client_id: suggestClientId,
+      created_at: now,
+      updated_at: now,
+      keyword: s.keyword,
+      keyword_type: s.keyword_type,
+      monthly_search_volume: s.monthly_search_volume,
+      competition: s.competition,
+      priority: s.priority,
+      used_in_gbp: false,
+      used_on_website: false,
+      current_ranking: null,
+      target_ranking: null,
+      last_updated: null,
+      notes: null,
+      is_selected: false,
+    }))
+
+    setKeywords(prev => [...prev, ...tempKeywords])
     setActiveClientId(suggestClientId)
     setModalOpen(false)
     setSuggestions([])
     setChecked(new Set())
+
+    // Save to DB and replace temp IDs with real UUIDs
+    try {
+      const res = await fetch('/api/keywords', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keywords: filtered.map(s => ({
+            client_id: suggestClientId,
+            keyword: s.keyword,
+            keyword_type: s.keyword_type,
+            monthly_search_volume: s.monthly_search_volume,
+            competition: s.competition,
+            priority: s.priority,
+          })),
+        }),
+      })
+      const data = await res.json()
+      if (data.ok && data.keywords) {
+        // Replace temp keywords with DB-returned records (real UUIDs)
+        setKeywords(prev => {
+          const tempIds = new Set(tempKeywords.map(k => k.id))
+          const withoutTemps = prev.filter(k => !tempIds.has(k.id))
+          return [...withoutTemps, ...data.keywords]
+        })
+      }
+    } catch (err) {
+      console.error('Failed to save keywords:', err)
+    }
   }
 
   // ── Derived data ──────────────────────────────────────────────────────────
