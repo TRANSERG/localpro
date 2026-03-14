@@ -106,6 +106,7 @@ export interface Keyword {
   target_ranking: number | null
   last_updated: string | null
   notes: string | null
+  is_selected: boolean
 }
 
 export interface Task {
