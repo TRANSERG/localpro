@@ -106,7 +106,6 @@ export interface Keyword {
   target_ranking: number | null
   last_updated: string | null
   notes: string | null
-  is_selected: boolean
 }
 
 export interface Task {
@@ -206,6 +205,8 @@ export interface BrandingProfile {
   approved_post_types: string[]
   posting_frequency: number | null
   notes: string | null
+  gem_instructions: string | null
+  reference_images?: string[]
 }
 
 export interface GBPSettings {
@@ -416,3 +417,50 @@ export interface ReviewGenerateResponse {
   reviews?: string[]
   error?: string
 }
+
+// ============================================================
+// Content Studio Types
+// ============================================================
+
+export type ContentIdeaStatus = 'idea' | 'approved' | 'rejected'
+export type ContentCalendarStatus = 'draft' | 'generated' | 'approved' | 'published'
+export type ContentPlatform = 'Instagram' | 'Facebook' | 'GBP' | 'WhatsApp'
+
+export interface ContentIdea {
+  id: string
+  client_id: string
+  created_at: string
+  updated_at: string
+  title: string
+  description: string | null
+  post_type: string
+  content_pillar: string | null
+  keywords_used: string[]
+  platform: ContentPlatform[]
+  status: ContentIdeaStatus
+  ai_generated: boolean
+  notes: string | null
+}
+
+export interface ContentCalendarEntry {
+  id: string
+  client_id: string
+  content_idea_id: string | null
+  created_at: string
+  updated_at: string
+  scheduled_date: string
+  month_year: string
+  platform: ContentPlatform
+  status: ContentCalendarStatus
+  caption: string | null
+  hashtags: string | null
+  image_url: string | null
+  image_prompt: string | null
+  notes: string | null
+  // joined
+  idea?: ContentIdea
+}
+
+export const CONTENT_PLATFORMS: ContentPlatform[] = ['Instagram', 'Facebook', 'GBP', 'WhatsApp']
+export const CONTENT_IDEA_STATUSES: ContentIdeaStatus[] = ['idea', 'approved', 'rejected']
+export const CONTENT_CALENDAR_STATUSES: ContentCalendarStatus[] = ['draft', 'generated', 'approved', 'published']

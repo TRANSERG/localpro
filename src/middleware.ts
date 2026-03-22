@@ -12,6 +12,11 @@ const isSupabaseConfigured =
 export async function middleware(request: NextRequest) {
   // If Supabase is not configured, bypass auth and allow all routes
   if (!isSupabaseConfigured) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[Middleware] FATAL: Supabase is not configured. Auth is disabled in production!')
+    } else {
+      console.warn('[Middleware] Supabase not configured — running without auth (dev mode)')
+    }
     const pathname = request.nextUrl.pathname
     // Redirect root to dashboard in dev mode
     if (pathname === '/') {

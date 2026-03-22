@@ -6,6 +6,7 @@ import type {
   Client, Profile, Keyword, Task, ReviewTracker,
   Competitor, MonthlyReport, BrandingProfile, GBPSettings,
   SOP, GBPAuditItem, GBPAuditResponse, GmbConnectionStatus,
+  ContentIdea, ContentCalendarEntry,
 } from '@/types'
 
 export async function getClients(): Promise<Client[]> {
@@ -147,6 +148,34 @@ export async function getGmbConnectionStatuses(
       info_synced_at: row?.info_synced_at ?? null,
     }
   })
+}
+
+// ── Content Studio ─────────────────────────────────────────────────────────
+
+export async function getContentIdeas(clientId?: string): Promise<ContentIdea[]> {
+  const supabase = await createClient()
+  let query = supabase
+    .from('content_ideas')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (clientId) query = query.eq('client_id', clientId)
+  const { data } = await query
+  return (data ?? []) as ContentIdea[]
+}
+
+export async function getContentCalendar(
+  clientId?: string,
+  monthYear?: string,
+): Promise<ContentCalendarEntry[]> {
+  const supabase = await createClient()
+  let query = supabase
+    .from('content_calendar')
+    .select('*, idea:content_ideas(*)')
+    .order('scheduled_date')
+  if (clientId) query = query.eq('client_id', clientId)
+  if (monthYear) query = query.eq('month_year', monthYear)
+  const { data } = await query
+  return (data ?? []) as ContentCalendarEntry[]
 }
 
 /** Aggregate monthly_reports data for the performance chart */

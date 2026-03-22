@@ -4,7 +4,8 @@ import { Header } from '@/components/layout/header'
 import { Client, ReviewTracker } from '@/types'
 import { cn, formatMonthYear } from '@/lib/utils'
 import { ClientAvatar } from '@/components/ui/client-avatar'
-import { Plus, Star, Check, X as XIcon } from 'lucide-react'
+import { Plus, Star, Check, X as XIcon, QrCode } from 'lucide-react'
+import type { ReviewAnalytics } from '@/lib/review-analytics'
 
 function Stars({ rating }: { rating: number | null }) {
   if (!rating) return <span className="text-gray-400 text-xs">—</span>
@@ -19,9 +20,11 @@ function Stars({ rating }: { rating: number | null }) {
 export default function ReviewsPage({
   initialReviews,
   initialClients,
+  initialAnalytics,
 }: {
   initialReviews: ReviewTracker[]
   initialClients: Client[]
+  initialAnalytics: ReviewAnalytics[]
 }) {
   const [clientFilter, setClientFilter] = useState('All')
   const [month, setMonth] = useState(() => {
@@ -59,6 +62,76 @@ export default function ReviewsPage({
             <option value="All">All Clients</option>
             {initialClients.map(c => <option key={c.id} value={c.id}>{c.business_name}</option>)}
           </select>
+        </div>
+
+        {/* ── QR Link Analytics ───────────────────────────────────── */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <QrCode className="h-4 w-4 text-blue-600" />
+            <h2 className="text-sm font-semibold text-gray-800">QR Link Analytics</h2>
+            <span className="text-xs text-gray-400 ml-1">— auto-tracked when customers scan or open review links</span>
+          </div>
+          {(() => {
+            const active = initialAnalytics.filter(a => a.visits > 0)
+            if (active.length === 0) {
+              return (
+                <p className="text-sm text-gray-400 py-4 text-center">
+                  No link visits yet — share QR codes with customers to start tracking.
+                </p>
+              )
+            }
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {active.map(a => {
+                  const client = getClient(a.clientId)
+                  if (!client) return null
+                  const conv = a.visits > 0 ? Math.round((a.completions / a.visits) * 100) : 0
+                  const totalRatings = Object.values(a.ratings).reduce((s, n) => s + n, 0)
+                  const lastVisit = a.lastVisit ? new Date(a.lastVisit).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+                  return (
+                    <div key={a.clientId} className="rounded-lg border border-gray-100 bg-gray-50/50 p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <ClientAvatar client={client} size="md" />
+                        <span className="text-xs font-semibold text-gray-900 truncate">{client.business_name}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div>
+                          <p className="text-lg font-bold text-gray-900">{a.visits}</p>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wide">Visits</p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold text-green-600">{a.completions}</p>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wide">Completed</p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold text-blue-600">{conv}%</p>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wide">Conv.</p>
+                        </div>
+                      </div>
+                      {totalRatings > 0 && (
+                        <div className="space-y-1">
+                          {[5, 4, 3, 2, 1].map(star => {
+                            const count = a.ratings[String(star)] ?? 0
+                            const pct = totalRatings > 0 ? Math.round((count / totalRatings) * 100) : 0
+                            return (
+                              <div key={star} className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-yellow-500 w-3">{'★'.repeat(star === 5 ? 1 : 0)}{star}</span>
+                                <div className="flex-1 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                                  <div className="h-full rounded-full bg-yellow-400" style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="text-[10px] text-gray-400 w-5 text-right">{count}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                      <p className="text-[10px] text-gray-400">Last visit: {lastVisit}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">

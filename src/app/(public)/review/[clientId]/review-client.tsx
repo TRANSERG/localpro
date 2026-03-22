@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import type { ReviewGenerateResponse } from '@/types'
 
@@ -101,6 +101,14 @@ function BrandedHeader({ client }: { client: PublicClientInfo }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
+function track(clientId: string, event: 'visit' | 'rating' | 'complete', rating?: number) {
+  fetch('/api/review/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clientId, event, rating }),
+  }).catch(() => {})
+}
+
 export function ReviewClient({ client }: { client: PublicClientInfo | null }) {
   const [step, setStep] = useState<Step>(
     !client ? 'not_found' : !client.google_review_url ? 'no_review_url' : 'rating',
@@ -112,6 +120,11 @@ export function ReviewClient({ client }: { client: PublicClientInfo | null }) {
   const [editedText, setEditedText] = useState('')
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (client?.id && step === 'rating') track(client.id, 'visit')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Not-found / no-URL screens ────────────────────────────────────────
   if (step === 'not_found') {
@@ -136,6 +149,7 @@ export function ReviewClient({ client }: { client: PublicClientInfo | null }) {
     setStars(rating)
     setStep('loading')
     setError(null)
+    track(client!.id, 'rating', rating)
 
     try {
       const res = await fetch('/api/review/generate', {
@@ -190,6 +204,7 @@ export function ReviewClient({ client }: { client: PublicClientInfo | null }) {
     }
 
     setCopied(true)
+    track(client!.id, 'complete')
     setTimeout(() => {
       window.location.href = client!.google_review_url!
     }, 600)

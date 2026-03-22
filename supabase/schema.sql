@@ -480,6 +480,247 @@ CREATE POLICY "anon read keywords for review"
   USING (true);
 
 -- ============================================================
--- ADD is_selected TO KEYWORDS
+-- CONTENT STUDIO
 -- ============================================================
-alter table public.keywords add column if not exists is_selected boolean not null default false;
+
+do $$ begin
+  create type content_idea_status as enum ('idea', 'approved', 'rejected');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type content_calendar_status as enum ('draft', 'generated', 'approved', 'published');
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type content_platform as enum ('Instagram', 'Facebook', 'GBP', 'WhatsApp');
+exception when duplicate_object then null; end $$;
+
+-- Content Ideas (Idea Bank)
+create table if not exists public.content_ideas (
+  id             uuid primary key default uuid_generate_v4(),
+  client_id      uuid not null references public.clients(id) on delete cascade,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now(),
+  title          text not null,
+  description    text,
+  post_type      text not null default 'Tips',
+  content_pillar text,
+  keywords_used  jsonb not null default '[]',
+  platform       jsonb not null default '["Instagram"]',
+  status         content_idea_status not null default 'idea',
+  ai_generated   boolean not null default false,
+  notes          text
+);
+
+create index if not exists content_ideas_client_id_idx on public.content_ideas(client_id);
+create index if not exists content_ideas_status_idx on public.content_ideas(status);
+
+create or replace trigger content_ideas_updated_at
+  before update on public.content_ideas
+  for each row execute function update_updated_at();
+
+-- Content Calendar
+create table if not exists public.content_calendar (
+  id               uuid primary key default uuid_generate_v4(),
+  client_id        uuid not null references public.clients(id) on delete cascade,
+  content_idea_id  uuid references public.content_ideas(id) on delete set null,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now(),
+  scheduled_date   date not null,
+  month_year       text not null,
+  platform         content_platform not null default 'Instagram',
+  status           content_calendar_status not null default 'draft',
+  caption          text,
+  hashtags         text,
+  image_url        text,
+  image_prompt     text,
+  notes            text
+);
+
+create index if not exists content_calendar_client_id_idx on public.content_calendar(client_id);
+create index if not exists content_calendar_month_year_idx on public.content_calendar(month_year);
+create index if not exists content_calendar_scheduled_date_idx on public.content_calendar(scheduled_date);
+
+create or replace trigger content_calendar_updated_at
+  before update on public.content_calendar
+  for each row execute function update_updated_at();
+
+-- RLS
+alter table public.content_ideas enable row level security;
+alter table public.content_calendar enable row level security;
+
+create policy "owner content_ideas" on public.content_ideas
+  for all using (get_user_role() = 'owner');
+create policy "team content_ideas" on public.content_ideas
+  for all using (get_user_role() = 'team' and client_id in (select get_my_client_ids()));
+
+create policy "owner content_calendar" on public.content_calendar
+  for all using (get_user_role() = 'owner');
+create policy "team content_calendar" on public.content_calendar
+  for all using (get_user_role() = 'team' and client_id in (select get_my_client_ids()));
+
+-- ============================================================
+-- MIGRATION: Add gem_instructions to branding_profiles
+-- ============================================================
+alter table public.branding_profiles add column if not exists gem_instructions text;
+
+-- ============================================================
+-- GMB TOKENS (OAuth credentials per client)
+-- ============================================================
+create table if not exists public.gmb_tokens (
+  id                uuid primary key default uuid_generate_v4(),
+  client_id         uuid not null unique references public.clients(id) on delete cascade,
+  google_email      text,
+  account_name      text,
+  location_name     text,
+  location_title    text,
+  access_token      text not null,
+  refresh_token     text not null,
+  token_expires_at  timestamptz not null,
+  reviews_synced_at timestamptz,
+  posts_synced_at   timestamptz,
+  insights_synced_at timestamptz,
+  info_synced_at    timestamptz,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+create or replace trigger gmb_tokens_updated_at
+  before update on public.gmb_tokens
+  for each row execute function update_updated_at();
+
+-- ============================================================
+-- GMB REVIEWS (synced Google reviews)
+-- ============================================================
+do $$ begin
+  create type gmb_star_rating as enum ('ONE', 'TWO', 'THREE', 'FOUR', 'FIVE');
+exception when duplicate_object then null; end $$;
+
+create table if not exists public.gmb_reviews (
+  id              uuid primary key default uuid_generate_v4(),
+  client_id       uuid not null references public.clients(id) on delete cascade,
+  gmb_review_id   text not null,
+  reviewer_name   text,
+  reviewer_photo  text,
+  star_rating     gmb_star_rating not null,
+  comment         text,
+  review_time     text,
+  reply_comment   text,
+  reply_time      text,
+  created_at      timestamptz not null default now(),
+  unique(client_id, gmb_review_id)
+);
+
+create index if not exists gmb_reviews_client_id_idx on public.gmb_reviews(client_id);
+
+-- ============================================================
+-- GMB POSTS (GBP local posts)
+-- ============================================================
+do $$ begin
+  create type gmb_topic_type as enum ('STANDARD', 'EVENT', 'OFFER');
+exception when duplicate_object then null; end $$;
+
+create table if not exists public.gmb_posts (
+  id            uuid primary key default uuid_generate_v4(),
+  client_id     uuid not null references public.clients(id) on delete cascade,
+  gmb_post_id   text,
+  topic_type    gmb_topic_type not null default 'STANDARD',
+  summary       text,
+  event_title   text,
+  event_start   text,
+  event_end     text,
+  cta_type      text,
+  cta_url       text,
+  media_urls    text[] default '{}',
+  state         text,
+  create_time   text,
+  created_at    timestamptz not null default now(),
+  unique(client_id, gmb_post_id)
+);
+
+create index if not exists gmb_posts_client_id_idx on public.gmb_posts(client_id);
+
+-- ============================================================
+-- GMB INSIGHTS (daily performance metrics)
+-- ============================================================
+create table if not exists public.gmb_insights (
+  id            uuid primary key default uuid_generate_v4(),
+  client_id     uuid not null references public.clients(id) on delete cascade,
+  metric_date   text not null,
+  metric_type   text not null,
+  value         integer not null default 0,
+  created_at    timestamptz not null default now(),
+  unique(client_id, metric_date, metric_type)
+);
+
+create index if not exists gmb_insights_client_id_idx on public.gmb_insights(client_id);
+
+-- ============================================================
+-- GMB BUSINESS INFO (location details)
+-- ============================================================
+create table if not exists public.gmb_business_info (
+  id                            uuid primary key default uuid_generate_v4(),
+  client_id                     uuid not null unique references public.clients(id) on delete cascade,
+  title                         text,
+  description                   text,
+  primary_phone                 text,
+  website_uri                   text,
+  primary_category_name         text,
+  primary_category_display_name text,
+  open_for_business             text,
+  address                       jsonb,
+  regular_hours                 jsonb default '[]',
+  synced_at                     timestamptz,
+  created_at                    timestamptz not null default now(),
+  updated_at                    timestamptz not null default now()
+);
+
+create or replace trigger gmb_business_info_updated_at
+  before update on public.gmb_business_info
+  for each row execute function update_updated_at();
+
+-- ============================================================
+-- GMB RLS POLICIES
+-- ============================================================
+alter table public.gmb_tokens enable row level security;
+alter table public.gmb_reviews enable row level security;
+alter table public.gmb_posts enable row level security;
+alter table public.gmb_insights enable row level security;
+alter table public.gmb_business_info enable row level security;
+
+create policy "owner gmb_tokens" on public.gmb_tokens
+  for all using (get_user_role() = 'owner');
+create policy "team gmb_tokens" on public.gmb_tokens
+  for all using (get_user_role() = 'team' and client_id in (select get_my_client_ids()));
+
+create policy "owner gmb_reviews" on public.gmb_reviews
+  for all using (get_user_role() = 'owner');
+create policy "team gmb_reviews" on public.gmb_reviews
+  for all using (get_user_role() = 'team' and client_id in (select get_my_client_ids()));
+
+create policy "owner gmb_posts" on public.gmb_posts
+  for all using (get_user_role() = 'owner');
+create policy "team gmb_posts" on public.gmb_posts
+  for all using (get_user_role() = 'team' and client_id in (select get_my_client_ids()));
+
+create policy "owner gmb_insights" on public.gmb_insights
+  for all using (get_user_role() = 'owner');
+create policy "team gmb_insights" on public.gmb_insights
+  for all using (get_user_role() = 'team' and client_id in (select get_my_client_ids()));
+
+create policy "owner gmb_business_info" on public.gmb_business_info
+  for all using (get_user_role() = 'owner');
+create policy "team gmb_business_info" on public.gmb_business_info
+  for all using (get_user_role() = 'team' and client_id in (select get_my_client_ids()));
+
+-- Service role can manage all GMB tables (for server-side sync operations)
+create policy "service gmb_tokens" on public.gmb_tokens
+  for all to service_role using (true) with check (true);
+create policy "service gmb_reviews" on public.gmb_reviews
+  for all to service_role using (true) with check (true);
+create policy "service gmb_posts" on public.gmb_posts
+  for all to service_role using (true) with check (true);
+create policy "service gmb_insights" on public.gmb_insights
+  for all to service_role using (true) with check (true);
+create policy "service gmb_business_info" on public.gmb_business_info
+  for all to service_role using (true) with check (true);
