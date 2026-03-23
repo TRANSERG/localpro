@@ -54,7 +54,7 @@ BRAND GUIDELINES:
 ${sectorBlock}
 
 SEO KEYWORDS (weave 1-2 naturally into caption): ${input.keywords.join(', ')}
-HASHTAG STRATEGY: Build hashtags using these keywords as primary seeds. Mix: location hashtags (#${input.city.replace(/\s+/g, '')} style), service hashtags derived from keywords, niche discovery hashtags, and 2-3 brand hashtags.
+HASHTAG STRATEGY: Use ONLY 5 high-priority hashtags. Derive them directly from the SEO keywords above — convert each keyword into a hashtag. Prioritize the most relevant and high-search-volume keywords for this specific post topic.
 
 POST DETAILS:
 - Idea: ${input.ideaTitle}
@@ -73,7 +73,7 @@ OUTPUT FORMAT (use these exact delimiters):
 ---CAPTION---
 [full caption text here]
 ---HASHTAGS---
-[15-20 hashtags space-separated — must include keyword-based hashtags, location tags, and niche discovery tags]`
+[exactly 5 hashtags space-separated — derived from SEO keywords, highest priority only]`
 }
 
 export function buildImagePrompt(input: {
