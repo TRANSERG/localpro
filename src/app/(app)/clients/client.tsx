@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Client, Profile, COLOR_TAGS, LANGUAGES } from '@/types'
@@ -8,8 +8,10 @@ import { formatINR, formatDate, getStatusClasses, getInitials, cn } from '@/lib/
 import { ClientAvatar } from '@/components/ui/client-avatar'
 import {
   Plus, Search, Globe, Phone, MessageCircle,
-  ExternalLink, Edit2, Trash2, X, QrCode,
+  ExternalLink, Edit2, Trash2, X, QrCode, ChevronDown, ChevronUp,
 } from 'lucide-react'
+import { detectSectorType } from '@/lib/client-sector-utils'
+import type { SectorData, MenuItem, ServiceItem, TreatmentItem, OfferingItem } from '@/lib/client-sector-utils'
 import { ReviewQRModal } from '@/components/ui/review-qr-modal'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 
@@ -74,6 +76,297 @@ function ModalSelect({
     >
       {options.map(o => <option key={o} value={o}>{o}</option>)}
     </select>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+const RESTAURANT_CATEGORIES = ['Starters', 'Main Course', 'Snacks', 'Breakfast', 'Beverages', 'Desserts', 'Thali', 'Specials']
+const SALON_CATEGORIES = ['Hair', 'Skin', 'Nails', 'Bridal', 'Spa', 'Makeup', 'Other']
+const RESTAURANT_FEATURES = ['Dine-in', 'Takeaway', 'Home Delivery', 'Catering', 'Online Order']
+const CLINIC_CONSULTATION = ['In-person', 'Online', 'Both']
+const SALON_BOOKING = ['Walk-in', 'Appointment', 'Both']
+const FITNESS_FACILITIES = ['AC Gym', 'Pool', 'Sauna', 'Group Classes', 'Personal Training', 'Cardio Zone', 'Weight Zone']
+const RETAIL_PRICE_RANGES = ['Budget', 'Mid-range', 'Premium', 'Luxury']
+
+function BusinessOfferingsForm({
+  businessType,
+  value,
+  onChange,
+  clientId,
+}: {
+  businessType: string
+  value: SectorData | null
+  onChange: (d: SectorData | null) => void
+  clientId: string
+}) {
+  const sector = detectSectorType(businessType || 'generic')
+  const base: SectorData = value ?? { clientId, sectorType: sector, updatedAt: '' }
+
+  function update(partial: Partial<SectorData>) {
+    onChange({ ...base, ...partial, sectorType: sector, clientId })
+  }
+
+  if (sector === 'restaurant') {
+    const items: MenuItem[] = base.restaurant?.menuItems ?? []
+    const features: string[] = base.restaurant?.features ?? []
+    const [newName, setNewName] = useState('')
+    const [newCat, setNewCat] = useState(RESTAURANT_CATEGORIES[0])
+    const [newPrice, setNewPrice] = useState('')
+
+    function addItem() {
+      if (!newName.trim()) return
+      update({ restaurant: { menuItems: [...items, { name: newName.trim(), category: newCat, price: newPrice || undefined }], features } })
+      setNewName(''); setNewPrice('')
+    }
+    function removeItem(i: number) {
+      update({ restaurant: { menuItems: items.filter((_, idx) => idx !== i), features } })
+    }
+    function toggleFeature(f: string) {
+      update({ restaurant: { menuItems: items, features: features.includes(f) ? features.filter(x => x !== f) : [...features, f] } })
+    }
+
+    return (
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">Restaurant / Cafe Menu</p>
+        <div className="space-y-1.5">
+          {items.map((item, i) => (
+            <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+              <span className="text-xs text-gray-700 flex-1">{item.name}</span>
+              <span className="text-[10px] text-gray-400">{item.category}</span>
+              {item.price && <span className="text-[10px] text-gray-400">₹{item.price}</span>}
+              <button type="button" onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-400"><X className="h-3 w-3" /></button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Dish name" className="flex-1 h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          <select value={newCat} onChange={e => setNewCat(e.target.value)} className="h-7 rounded border border-gray-200 px-1.5 text-xs focus:outline-none">
+            {RESTAURANT_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          </select>
+          <input value={newPrice} onChange={e => setNewPrice(e.target.value)} placeholder="₹ price" className="w-16 h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          <button type="button" onClick={addItem} className="h-7 px-2.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">Add</button>
+        </div>
+        <div>
+          <p className="text-[10px] text-gray-500 mb-1.5">Features:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {RESTAURANT_FEATURES.map(f => (
+              <button key={f} type="button" onClick={() => toggleFeature(f)}
+                className={cn('px-2.5 py-1 rounded-full text-[10px] border transition-colors', features.includes(f) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300')}>
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (sector === 'salon') {
+    const services: ServiceItem[] = base.salon?.services ?? []
+    const bookingType = base.salon?.bookingType ?? 'Both'
+    const [newName, setNewName] = useState('')
+    const [newCat, setNewCat] = useState(SALON_CATEGORIES[0])
+    const [newPrice, setNewPrice] = useState('')
+
+    function addService() {
+      if (!newName.trim()) return
+      update({ salon: { services: [...services, { name: newName.trim(), category: newCat, price: newPrice || undefined }], bookingType } })
+      setNewName(''); setNewPrice('')
+    }
+    function removeService(i: number) {
+      update({ salon: { services: services.filter((_, idx) => idx !== i), bookingType } })
+    }
+
+    return (
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold text-pink-600 uppercase tracking-wide">Salon / Beauty Services</p>
+        <div className="space-y-1.5">
+          {services.map((svc, i) => (
+            <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+              <span className="text-xs text-gray-700 flex-1">{svc.name}</span>
+              <span className="text-[10px] text-gray-400">{svc.category}</span>
+              {svc.price && <span className="text-[10px] text-gray-400">₹{svc.price}</span>}
+              <button type="button" onClick={() => removeService(i)} className="text-gray-300 hover:text-red-400"><X className="h-3 w-3" /></button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Service name" className="flex-1 h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          <select value={newCat} onChange={e => setNewCat(e.target.value)} className="h-7 rounded border border-gray-200 px-1.5 text-xs focus:outline-none">
+            {SALON_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          </select>
+          <input value={newPrice} onChange={e => setNewPrice(e.target.value)} placeholder="₹ price" className="w-16 h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+          <button type="button" onClick={addService} className="h-7 px-2.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">Add</button>
+        </div>
+        <div>
+          <p className="text-[10px] text-gray-500 mb-1">Booking Type:</p>
+          <div className="flex gap-1.5">
+            {SALON_BOOKING.map(b => (
+              <button key={b} type="button" onClick={() => update({ salon: { services, bookingType: b } })}
+                className={cn('px-2.5 py-1 rounded-full text-[10px] border transition-colors', bookingType === b ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300')}>
+                {b}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (sector === 'clinic') {
+    const specializations: string[] = base.clinic?.specializations ?? []
+    const treatments: TreatmentItem[] = base.clinic?.treatments ?? []
+    const consultationType = base.clinic?.consultationType ?? 'In-person'
+    const [newSpec, setNewSpec] = useState('')
+    const [newTreatment, setNewTreatment] = useState('')
+
+    function addSpec() {
+      if (!newSpec.trim()) return
+      update({ clinic: { specializations: [...specializations, newSpec.trim()], treatments, consultationType } })
+      setNewSpec('')
+    }
+    function removeSpec(i: number) {
+      update({ clinic: { specializations: specializations.filter((_, idx) => idx !== i), treatments, consultationType } })
+    }
+    function addTreatment() {
+      if (!newTreatment.trim()) return
+      update({ clinic: { specializations, treatments: [...treatments, { name: newTreatment.trim() }], consultationType } })
+      setNewTreatment('')
+    }
+    function removeTreatment(i: number) {
+      update({ clinic: { specializations, treatments: treatments.filter((_, idx) => idx !== i), consultationType } })
+    }
+
+    return (
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold text-green-600 uppercase tracking-wide">Clinic / Healthcare</p>
+        <div>
+          <p className="text-[10px] text-gray-500 mb-1">Specializations:</p>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {specializations.map((s, i) => (
+              <span key={i} className="flex items-center gap-1 bg-green-50 text-green-700 text-[10px] rounded-full px-2.5 py-1">
+                {s} <button type="button" onClick={() => removeSpec(i)}><X className="h-2.5 w-2.5" /></button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input value={newSpec} onChange={e => setNewSpec(e.target.value)} placeholder="e.g. Dermatology" className="flex-1 h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            <button type="button" onClick={addSpec} className="h-7 px-2.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">Add</button>
+          </div>
+        </div>
+        <div>
+          <p className="text-[10px] text-gray-500 mb-1">Treatments:</p>
+          <div className="space-y-1 mb-2">
+            {treatments.map((t, i) => (
+              <div key={i} className="flex items-center gap-2 bg-gray-50 rounded px-2 py-1">
+                <span className="text-xs flex-1">{t.name}</span>
+                <button type="button" onClick={() => removeTreatment(i)} className="text-gray-300 hover:text-red-400"><X className="h-3 w-3" /></button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input value={newTreatment} onChange={e => setNewTreatment(e.target.value)} placeholder="e.g. Skin Consultation" className="flex-1 h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            <button type="button" onClick={addTreatment} className="h-7 px-2.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">Add</button>
+          </div>
+        </div>
+        <div>
+          <p className="text-[10px] text-gray-500 mb-1">Consultation:</p>
+          <div className="flex gap-1.5">
+            {CLINIC_CONSULTATION.map(c => (
+              <button key={c} type="button" onClick={() => update({ clinic: { specializations, treatments, consultationType: c } })}
+                className={cn('px-2.5 py-1 rounded-full text-[10px] border transition-colors', consultationType === c ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300')}>
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (sector === 'fitness') {
+    const programs: OfferingItem[] = base.fitness?.programs ?? []
+    const facilities: string[] = base.fitness?.facilities ?? []
+    const [newProgram, setNewProgram] = useState('')
+
+    function addProgram() {
+      if (!newProgram.trim()) return
+      update({ fitness: { programs: [...programs, { name: newProgram.trim() }], facilities } })
+      setNewProgram('')
+    }
+    function removeProgram(i: number) {
+      update({ fitness: { programs: programs.filter((_, idx) => idx !== i), facilities } })
+    }
+    function toggleFacility(f: string) {
+      update({ fitness: { programs, facilities: facilities.includes(f) ? facilities.filter(x => x !== f) : [...facilities, f] } })
+    }
+
+    return (
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold text-orange-600 uppercase tracking-wide">Gym / Fitness</p>
+        <div>
+          <p className="text-[10px] text-gray-500 mb-1">Programs:</p>
+          <div className="space-y-1 mb-2">
+            {programs.map((p, i) => (
+              <div key={i} className="flex items-center gap-2 bg-gray-50 rounded px-2 py-1">
+                <span className="text-xs flex-1">{p.name}</span>
+                <button type="button" onClick={() => removeProgram(i)} className="text-gray-300 hover:text-red-400"><X className="h-3 w-3" /></button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input value={newProgram} onChange={e => setNewProgram(e.target.value)} placeholder="e.g. Weight Loss Program" className="flex-1 h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+            <button type="button" onClick={addProgram} className="h-7 px-2.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">Add</button>
+          </div>
+        </div>
+        <div>
+          <p className="text-[10px] text-gray-500 mb-1.5">Facilities:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {FITNESS_FACILITIES.map(f => (
+              <button key={f} type="button" onClick={() => toggleFacility(f)}
+                className={cn('px-2.5 py-1 rounded-full text-[10px] border transition-colors', facilities.includes(f) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300')}>
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Generic / retail / everything else
+  const offerings: OfferingItem[] = base.generic?.offerings ?? []
+  const [newName, setNewName] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+
+  function addOffering() {
+    if (!newName.trim()) return
+    update({ generic: { offerings: [...offerings, { name: newName.trim(), description: newDesc.trim() || undefined }] } })
+    setNewName(''); setNewDesc('')
+  }
+  function removeOffering(i: number) {
+    update({ generic: { offerings: offerings.filter((_, idx) => idx !== i) } })
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Services / Offerings</p>
+      <div className="space-y-1.5">
+        {offerings.map((o, i) => (
+          <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+            <span className="text-xs text-gray-700 flex-1">{o.name}</span>
+            {o.description && <span className="text-[10px] text-gray-400 truncate max-w-32">{o.description}</span>}
+            <button type="button" onClick={() => removeOffering(i)} className="text-gray-300 hover:text-red-400"><X className="h-3 w-3" /></button>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Service/product name" className="flex-1 h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+        <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Short description (optional)" className="flex-1 h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+        <button type="button" onClick={addOffering} className="h-7 px-2.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">Add</button>
+      </div>
+    </div>
   )
 }
 
@@ -144,6 +437,19 @@ function ClientModal({
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [offeringsOpen, setOfferingsOpen] = useState(false)
+  const [sectorData, setSectorData] = useState<SectorData | null>(null)
+
+  // Load existing sector data when editing
+  useEffect(() => {
+    if (client?.id) {
+      fetch(`/api/clients/sector-data?clientId=${client.id}`)
+        .then(r => r.json())
+        .then(j => { if (j.ok && j.data) setSectorData(j.data) })
+        .catch(() => {})
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const set = (k: keyof FormData, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -188,6 +494,13 @@ function ClientModal({
         .select()
         .single()
       if (err) { setError(err.message); setSaving(false); return }
+      if (sectorData) {
+        await fetch('/api/clients/sector-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...sectorData, clientId: client.id }),
+        }).catch(() => {})
+      }
       onSaved(data as Client)
     } else {
       const { data, error: err } = await supabase
@@ -196,6 +509,13 @@ function ClientModal({
         .select()
         .single()
       if (err) { setError(err.message); setSaving(false); return }
+      if (sectorData) {
+        await fetch('/api/clients/sector-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...sectorData, clientId: (data as Client).id }),
+        }).catch(() => {})
+      }
       onSaved(data as Client)
     }
     onClose()
@@ -362,6 +682,31 @@ function ClientModal({
                 />
               </div>
             </div>
+          </div>
+
+          {/* Business Offerings */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setOfferingsOpen(o => !o)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-left"
+            >
+              <div>
+                <p className="text-xs font-semibold text-gray-700">Business Offerings <span className="text-gray-400 font-normal">(Optional)</span></p>
+                <p className="text-[10px] text-gray-400 mt-0.5">Menu items, services, or products — helps AI generate more specific content</p>
+              </div>
+              {offeringsOpen ? <ChevronUp className="h-4 w-4 text-gray-400 flex-shrink-0" /> : <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />}
+            </button>
+            {offeringsOpen && (
+              <div className="px-4 py-4 space-y-4">
+                <BusinessOfferingsForm
+                  businessType={form.business_type}
+                  value={sectorData}
+                  onChange={setSectorData}
+                  clientId={client?.id ?? ''}
+                />
+              </div>
+            )}
           </div>
 
           {error && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}

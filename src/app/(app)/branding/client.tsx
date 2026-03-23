@@ -175,6 +175,7 @@ type FormData = {
   posting_frequency: string
   logo_url: string
   notes: string
+  gem_instructions: string
 }
 
 const EMPTY_FORM: FormData = {
@@ -190,6 +191,7 @@ const EMPTY_FORM: FormData = {
   posting_frequency: '',
   logo_url: '',
   notes: '',
+  gem_instructions: '',
 }
 
 function brandingToForm(b: BrandingProfile): FormData {
@@ -206,6 +208,7 @@ function brandingToForm(b: BrandingProfile): FormData {
     posting_frequency: b.posting_frequency?.toString() ?? '',
     logo_url: b.logo_url ?? '',
     notes: b.notes ?? '',
+    gem_instructions: b.gem_instructions ?? '',
   }
 }
 
@@ -225,6 +228,7 @@ function formToPayload(form: FormData) {
     posting_frequency: form.posting_frequency ? parseInt(form.posting_frequency) : null,
     logo_url: form.logo_url || null,
     notes: form.notes || null,
+    gem_instructions: form.gem_instructions || null,
   }
 }
 
@@ -420,6 +424,29 @@ function BrandingModal({
               <div>
                 <FieldLabel>Caption Templates</FieldLabel>
                 <ModalTextarea value={form.caption_templates} onChange={v => set('caption_templates', v)} rows={4} placeholder="Template 1: [Emoji] Headline&#10;Body copy...&#10;&#10;Template 2: ..." />
+              </div>
+            </div>
+          </div>
+
+          {/* Gem Instructions */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">AI Generation</p>
+            <div>
+              <FieldLabel>Gem Instructions (System Prompt)</FieldLabel>
+              <ModalTextarea
+                value={form.gem_instructions}
+                onChange={v => set('gem_instructions', v)}
+                rows={5}
+                placeholder="Paste your Gemini Gem instructions here... These will be used as system instructions for AI caption & image generation for this client only."
+              />
+              <div className="flex items-center justify-between mt-1">
+                <p className="text-[10px] text-gray-400">Per-client AI persona — each client can have unique style instructions</p>
+                <p className={cn(
+                  'text-[10px] font-mono',
+                  form.gem_instructions.length > 8000 ? 'text-amber-600' : 'text-gray-400',
+                )}>
+                  {form.gem_instructions.length.toLocaleString()} / 8,000
+                </p>
               </div>
             </div>
           </div>
@@ -700,6 +727,13 @@ export default function BrandingPage({
                   <div className="bg-white rounded-xl border border-gray-200 p-5">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Caption Templates</p>
                     <pre className="text-sm text-gray-700 font-sans whitespace-pre-line leading-relaxed">{branding.caption_templates}</pre>
+                  </div>
+                )}
+
+                {branding.gem_instructions && (
+                  <div className="bg-purple-50 rounded-xl border border-purple-200 p-5">
+                    <p className="text-xs font-semibold text-purple-700 uppercase tracking-wider mb-3">Gem Instructions (AI System Prompt)</p>
+                    <pre className="text-sm text-gray-700 font-sans whitespace-pre-line leading-relaxed">{branding.gem_instructions}</pre>
                   </div>
                 )}
 

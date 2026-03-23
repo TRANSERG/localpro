@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMockClient, getMockKeywordsForClient } from '@/lib/mock-data'
-import { getGeminiClient, hasGeminiKeys } from '@/lib/gemini-client'
+import { withKeyRetry, hasGeminiKeys } from '@/lib/gemini-client'
 
 // ── Prompt builder ──────────────────────────────────────────────────────────
 
@@ -166,10 +166,13 @@ export async function POST(req: NextRequest) {
       language: lang,
     })
 
-    const genAI = getGeminiClient()
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' })
-    const result = await model.generateContent(prompt)
-    const text = result.response.text()
+    const text = await withKeyRetry(async (ai) => {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      })
+      return response.text ?? ''
+    })
     const reviews = parseReviewResponse(text)
 
     if (reviews.length === 0) {

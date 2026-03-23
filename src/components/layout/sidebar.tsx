@@ -7,7 +7,7 @@ import { useMobileNav } from '@/lib/mobile-nav-context'
 import {
   LayoutDashboard, Users, MapPin, Search, Star,
   Users2, CalendarDays, Palette, Settings, BarChart3,
-  BookOpen, Building2, ChevronLeft, ChevronRight, X, Store,
+  BookOpen, Building2, ChevronLeft, ChevronRight, X, Store, PenSquare,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -21,6 +21,7 @@ const NAV = [
   { label: 'Competitors', href: '/competitors', icon: Users2 },
   { label: 'Monthly Report', href: '/reports', icon: BarChart3 },
   { label: 'Branding', href: '/branding', icon: Palette },
+  { label: 'Content Studio', href: '/content', icon: PenSquare },
   { label: 'GBP Settings', href: '/gbp-settings', icon: Settings },
   { label: 'GMB Connect',  href: '/gmb',           icon: Store },
   { label: 'SOPs',         href: '/sops',           icon: BookOpen },

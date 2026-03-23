@@ -89,6 +89,7 @@ export async function getValidAccessToken(clientId: string): Promise<string> {
       client_id:     GOOGLE_CLIENT_ID,
       client_secret: GOOGLE_CLIENT_SECRET,
     }),
+    signal: AbortSignal.timeout(10000),
   })
 
   if (!res.ok) {
@@ -148,6 +149,7 @@ export async function handleOAuthCallback(
       redirect_uri:  REDIRECT_URI,
       grant_type:    'authorization_code',
     }),
+    signal: AbortSignal.timeout(10000),
   })
 
   if (!tokenRes.ok) {
@@ -168,6 +170,7 @@ export async function handleOAuthCallback(
   try {
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
+      signal: AbortSignal.timeout(5000),
     })
     if (userRes.ok) {
       const user = await userRes.json() as { email?: string }
@@ -223,6 +226,7 @@ async function discoverAndStoreLocation(
 ) {
   const acctRes = await fetch(`${ACCOUNTS_API}/accounts`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(10000),
   })
   if (!acctRes.ok) {
     const err = await acctRes.text()
@@ -239,7 +243,7 @@ async function discoverAndStoreLocation(
 
   const locRes = await fetch(
     `${BIZ_INFO_API}/${account.name}/locations?readMask=name,title`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
+    { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(10000) },
   )
   if (!locRes.ok) {
     const err = await locRes.text()
@@ -274,8 +278,12 @@ export async function disconnectClient(clientId: string): Promise<void> {
 
   if (row?.access_token) {
     // Attempt to revoke the token at Google (best-effort)
-    fetch(`https://oauth2.googleapis.com/revoke?token=${row.access_token}`, { method: 'POST' })
-      .catch(() => { /* ignore */ })
+    fetch(`https://oauth2.googleapis.com/revoke?token=${row.access_token}`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(5000),
+    }).catch((err) => {
+      console.warn('[GMB] Token revocation failed (non-fatal):', err)
+    })
   }
 
   await supabase.from('gmb_tokens').delete().eq('client_id', clientId)
