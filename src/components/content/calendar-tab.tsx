@@ -152,7 +152,7 @@ export function CalendarTab({
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           status: 'draft',
-          caption: null, hashtags: null, image_url: null, image_prompt: null,
+          caption: null, hashtags: null, image_url: null, image_prompt: null, image_ratio: null,
           ...data,
           month_year,
           ...(linkedIdea ? { idea: linkedIdea } : {}),
@@ -330,15 +330,27 @@ function CalendarEntryModal({
   prefillDate?: string
   clientId: string
   approvedIdeas: ContentIdea[]
-  onSave: (data: { content_idea_id: string | null; scheduled_date: string; platform: ContentPlatform; notes: string; customIdea?: { title: string; description: string } }) => void
+  onSave: (data: { content_idea_id: string | null; scheduled_date: string; platform: ContentPlatform; image_ratio: string; notes: string; customIdea?: { title: string; description: string } }) => void
   onDelete?: () => void
   onGenerate?: () => void
   onClose: () => void
 }) {
+  const RATIOS = [
+    { value: '1:1',  label: '1:1',  hint: 'Square' },
+    { value: '3:4',  label: '4:5',  hint: 'Portrait' },
+    { value: '9:16', label: '9:16', hint: 'Story' },
+    { value: '16:9', label: '16:9', hint: 'Landscape' },
+    { value: '4:3',  label: '4:3',  hint: 'Wide' },
+  ] as const
+  const PLATFORM_DEFAULT_RATIO: Record<string, string> = {
+    Instagram: '3:4', Facebook: '4:3', GBP: '1:1', WhatsApp: '9:16',
+  }
+
   const [ideaMode, setIdeaMode] = useState<IdeaMode>('bank')
   const [ideaId, setIdeaId] = useState(entry?.content_idea_id ?? '')
   const [date, setDate] = useState(entry?.scheduled_date ?? prefillDate ?? '')
   const [platform, setPlatform] = useState<ContentPlatform>(entry?.platform ?? 'Instagram')
+  const [imageRatio, setImageRatio] = useState(entry?.image_ratio ?? PLATFORM_DEFAULT_RATIO[entry?.platform ?? 'Instagram'] ?? '3:4')
   const [notes, setNotes] = useState(entry?.notes ?? '')
 
   // AI suggestions state
@@ -380,11 +392,11 @@ function CalendarEntryModal({
 
   function handleSave() {
     if (ideaMode === 'bank') {
-      onSave({ content_idea_id: ideaId || null, scheduled_date: date, platform, notes })
+      onSave({ content_idea_id: ideaId || null, scheduled_date: date, platform, image_ratio: imageRatio, notes })
     } else if (ideaMode === 'suggestions' && selectedSuggestion) {
-      onSave({ content_idea_id: null, scheduled_date: date, platform, notes, customIdea: selectedSuggestion })
+      onSave({ content_idea_id: null, scheduled_date: date, platform, image_ratio: imageRatio, notes, customIdea: selectedSuggestion })
     } else if (ideaMode === 'custom' && customTitle.trim()) {
-      onSave({ content_idea_id: null, scheduled_date: date, platform, notes, customIdea: { title: customTitle.trim(), description: customDescription.trim() } })
+      onSave({ content_idea_id: null, scheduled_date: date, platform, image_ratio: imageRatio, notes, customIdea: { title: customTitle.trim(), description: customDescription.trim() } })
     }
   }
 
@@ -535,7 +547,7 @@ function CalendarEntryModal({
                 <button
                   key={p}
                   type="button"
-                  onClick={() => setPlatform(p)}
+                  onClick={() => { setPlatform(p); if (!entry?.image_ratio) setImageRatio(PLATFORM_DEFAULT_RATIO[p] ?? '3:4') }}
                   className={cn(
                     'rounded-full px-3 py-1.5 text-xs font-medium border transition-colors',
                     platform === p
@@ -544,6 +556,29 @@ function CalendarEntryModal({
                   )}
                 >
                   {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Image Ratio */}
+          <div>
+            <label className="block text-[11px] font-medium text-gray-600 mb-1">Image Ratio</label>
+            <div className="flex gap-2 flex-wrap">
+              {RATIOS.map(r => (
+                <button
+                  key={r.value}
+                  type="button"
+                  onClick={() => setImageRatio(r.value)}
+                  className={cn(
+                    'flex flex-col items-center px-3 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors',
+                    imageRatio === r.value
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300',
+                  )}
+                >
+                  {r.label}
+                  <span className={cn('text-[9px] font-normal mt-0.5', imageRatio === r.value ? 'text-blue-200' : 'text-gray-400')}>{r.hint}</span>
                 </button>
               ))}
             </div>

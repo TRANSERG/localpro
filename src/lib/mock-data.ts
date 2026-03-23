@@ -201,7 +201,7 @@ export const mockContentCalendar: ContentCalendarEntry[] = [
     scheduled_date: '2026-03-22', month_year: '2026-03',
     platform: 'Instagram', status: 'draft',
     caption: null, hashtags: null,
-    image_url: null, image_prompt: null, notes: null,
+    image_url: null, image_prompt: null, image_ratio: null, notes: null,
   },
   {
     id: 'cc4', client_id: 'c7', content_idea_id: 'ci7',
@@ -209,7 +209,7 @@ export const mockContentCalendar: ContentCalendarEntry[] = [
     scheduled_date: '2026-03-24', month_year: '2026-03',
     platform: 'Instagram', status: 'draft',
     caption: null, hashtags: null,
-    image_url: null, image_prompt: null, notes: null,
+    image_url: null, image_prompt: null, image_ratio: null, notes: null,
   },
   {
     id: 'cc5', client_id: 'c8', content_idea_id: 'ci9',
@@ -217,7 +217,7 @@ export const mockContentCalendar: ContentCalendarEntry[] = [
     scheduled_date: '2026-03-25', month_year: '2026-03',
     platform: 'Instagram', status: 'draft',
     caption: null, hashtags: null,
-    image_url: null, image_prompt: null, notes: null,
+    image_url: null, image_prompt: null, image_ratio: null, notes: null,
   },
 ]
 

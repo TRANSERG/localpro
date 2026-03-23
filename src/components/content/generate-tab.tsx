@@ -37,28 +37,11 @@ export function GenerateTab({
   // Image generation is always enabled
   const generateImage = true
 
-  // Aspect ratio
-  const RATIOS = [
-    { value: '1:1',  label: '1:1',  hint: 'Square' },
-    { value: '3:4',  label: '4:5',  hint: 'Portrait' },
-    { value: '9:16', label: '9:16', hint: 'Story' },
-    { value: '16:9', label: '16:9', hint: 'Landscape' },
-    { value: '4:3',  label: '4:3',  hint: 'Wide' },
-  ] as const
-  type RatioValue = typeof RATIOS[number]['value']
-  const PLATFORM_DEFAULT_RATIO: Record<string, RatioValue> = {
-    Instagram: '3:4',
-    Facebook:  '4:3',
-    GBP:       '1:1',
-    WhatsApp:  '9:16',
-  }
-  const [imageRatio, setImageRatio] = useState<RatioValue>(() => {
-    const entryPlatform = calendar.find(e => e.id === (prefillEntry?.id ?? ''))?.platform ?? 'Instagram'
-    return PLATFORM_DEFAULT_RATIO[entryPlatform] ?? '3:4'
-  })
+  // Aspect ratio — read from calendar entry (set in calendar modal)
+  const imageRatio = prefillEntry?.image_ratio ?? '3:4'
 
   // Preview aspect class
-  const RATIO_CLASS: Record<RatioValue, string> = {
+  const RATIO_CLASS: Record<string, string> = {
     '1:1':  'aspect-square',
     '3:4':  'aspect-[3/4]',
     '9:16': 'aspect-[9/16]',
@@ -368,29 +351,6 @@ export function GenerateTab({
             <span className="font-semibold">Post draft: </span>{selectedIdea.description}
           </div>
         )}
-
-        {/* Image ratio selector */}
-        <div>
-          <p className="text-[11px] font-medium text-gray-500 mb-1.5">Image Ratio</p>
-          <div className="flex gap-2 flex-wrap">
-            {RATIOS.map(r => (
-              <button
-                key={r.value}
-                type="button"
-                onClick={() => setImageRatio(r.value)}
-                className={cn(
-                  'flex flex-col items-center px-3 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors',
-                  imageRatio === r.value
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300',
-                )}
-              >
-                {r.label}
-                <span className={cn('text-[9px] font-normal mt-0.5', imageRatio === r.value ? 'text-blue-200' : 'text-gray-400')}>{r.hint}</span>
-              </button>
-            ))}
-          </div>
-        </div>
 
         <div className="flex items-center justify-between">
           {branding?.logo_url && (
