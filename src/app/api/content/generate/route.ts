@@ -471,7 +471,8 @@ export async function POST(req: NextRequest) {
         if (imagePart?.inlineData) {
           const { data, mimeType } = imagePart.inlineData
           if (data && mimeType) {
-            imageUrl = `data:${mimeType};base64,${data}`
+            let finalBase64 = data
+            let finalMimeType = mimeType
 
             // Programmatic Devanagari text overlay (only if enabled — currently disabled, AI handles text)
             try {
@@ -483,11 +484,44 @@ export async function POST(req: NextRequest) {
                   (dish, map, fallback) =>
                     lookupTagline(dish, Object.keys(map).length > 0 ? map : ANNABRAHMA_PHRASES, fallback),
                 )
-                imageUrl = await applyDevanagariOverlay(imageUrl, mimeType, overlayConfig, oDishName, oTagline)
+                const overlaidUri = await applyDevanagariOverlay(
+                  `data:${mimeType};base64,${data}`, mimeType, overlayConfig, oDishName, oTagline,
+                )
+                const match = overlaidUri.match(/^data:([^;]+);base64,(.+)$/)
+                if (match) {
+                  finalMimeType = match[1]
+                  finalBase64 = match[2]
+                }
               }
             } catch (overlayErr) {
-              console.error('[Overlay] Failed, returning raw Gemini image:', overlayErr)
-              // Graceful degradation — imageUrl remains the original Gemini image
+              console.error('[Overlay] Failed, using raw Gemini image:', overlayErr)
+            }
+
+            // Upload to Supabase Storage (fallback to data URI if upload fails)
+            try {
+              const { createClient: createStorageClient } = await import('@/lib/supabase/server')
+              const storageClient = await createStorageClient()
+              const ext = finalMimeType === 'image/png' ? 'png' : 'jpg'
+              const storagePath = `${clientId}/${entryId ?? Date.now()}.${ext}`
+              const buffer = Buffer.from(finalBase64, 'base64')
+
+              const { error: uploadErr } = await storageClient.storage
+                .from('generated-images')
+                .upload(storagePath, buffer, { contentType: finalMimeType, upsert: true })
+
+              if (!uploadErr) {
+                const { data: { publicUrl } } = storageClient.storage
+                  .from('generated-images')
+                  .getPublicUrl(storagePath)
+                imageUrl = publicUrl
+                console.log(`[Storage] Uploaded image: ${storagePath}`)
+              } else {
+                console.error('[Storage] Upload failed, using data URI fallback:', uploadErr.message)
+                imageUrl = `data:${finalMimeType};base64,${finalBase64}`
+              }
+            } catch (storageErr) {
+              console.error('[Storage] Error, using data URI fallback:', storageErr)
+              imageUrl = `data:${finalMimeType};base64,${finalBase64}`
             }
           }
         } else {
