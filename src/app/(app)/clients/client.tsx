@@ -63,10 +63,12 @@ function ModalSelect({
   value,
   onChange,
   options,
+  placeholder,
 }: {
   value: string
   onChange: (v: string) => void
   options: string[]
+  placeholder?: string
 }) {
   return (
     <select
@@ -74,6 +76,7 @@ function ModalSelect({
       onChange={e => onChange(e.target.value)}
       className="w-full h-8 rounded-lg border border-gray-200 px-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
     >
+      {placeholder && <option value="" disabled>{placeholder}</option>}
       {options.map(o => <option key={o} value={o}>{o}</option>)}
     </select>
   )
@@ -88,6 +91,17 @@ const CLINIC_CONSULTATION = ['In-person', 'Online', 'Both']
 const SALON_BOOKING = ['Walk-in', 'Appointment', 'Both']
 const FITNESS_FACILITIES = ['AC Gym', 'Pool', 'Sauna', 'Group Classes', 'Personal Training', 'Cardio Zone', 'Weight Zone']
 const RETAIL_PRICE_RANGES = ['Budget', 'Mid-range', 'Premium', 'Luxury']
+
+const BUSINESS_TYPES = [
+  'Restaurant', 'Cafe', 'Bakery', 'Food Truck', 'Kitchen/Tiffin',
+  'Salon', 'Spa', 'Beauty Parlour', 'Barber Shop',
+  'Clinic', 'Hospital', 'Dental Clinic', 'Physiotherapy',
+  'Gym', 'Fitness Studio', 'Yoga Studio',
+  'Retail Store', 'Boutique', 'Jewellery Store', 'Electronics Store',
+  'Education', 'Real Estate', 'IT Services', 'Consulting',
+  'Hotel', 'Photography Studio', 'Event Management',
+  'Other',
+]
 
 function BusinessOfferingsForm({
   businessType,
@@ -552,7 +566,7 @@ function ClientModal({
               </div>
               <div>
                 <FieldLabel>Business Type</FieldLabel>
-                <ModalInput value={form.business_type} onChange={v => set('business_type', v)} placeholder="Dentistry, Gym, etc." />
+                <ModalSelect value={form.business_type} onChange={v => set('business_type', v)} options={BUSINESS_TYPES} placeholder="Select business type..." />
               </div>
               <div>
                 <FieldLabel>City</FieldLabel>
