@@ -120,13 +120,20 @@ export default function ContentStudioPage({
 
       // Step 3: Build calendar entries with real idea IDs, then batch save
       const postDays = postDaysForCount
-      const entryRows = savedIdeas.slice(0, postDays.length).map((idea, i) => ({
-        content_idea_id: idea.id,
-        scheduled_date: postDays[i],
-        month_year: monthYear,
-        platform: (idea.platform?.[0] ?? 'Instagram') as ContentPlatform,
-        status: 'draft' as const,
-      }))
+      const PLATFORM_DEFAULT_RATIO: Record<string, string> = {
+        Instagram: '3:4', Facebook: '4:3', GBP: '1:1', WhatsApp: '9:16',
+      }
+      const entryRows = savedIdeas.slice(0, postDays.length).map((idea, i) => {
+        const plat = (idea.platform?.[0] ?? 'Instagram') as ContentPlatform
+        return {
+          content_idea_id: idea.id,
+          scheduled_date: postDays[i],
+          month_year: monthYear,
+          platform: plat,
+          image_ratio: PLATFORM_DEFAULT_RATIO[plat] ?? '3:4',
+          status: 'draft' as const,
+        }
+      })
 
       const calRes = await fetch('/api/content/calendar', {
         method: 'POST',
@@ -152,7 +159,7 @@ export default function ContentStudioPage({
           month_year: monthYear,
           platform: (idea.platform?.[0] ?? 'Instagram') as ContentPlatform,
           status: 'draft' as const,
-          notes: null, caption: null, hashtags: null, image_url: null, image_prompt: null,
+          notes: null, caption: null, hashtags: null, image_url: null, image_prompt: null, image_ratio: PLATFORM_DEFAULT_RATIO[(idea.platform?.[0] ?? 'Instagram')] ?? '3:4',
           idea,
         }))
       }

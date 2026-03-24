@@ -1,20 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { promises as fs } from 'fs'
-import path from 'path'
+import { createClient } from '@/lib/supabase/server'
 
-const REF_DIR = path.join(process.cwd(), 'public', 'reference-images')
-
-function sanitizeClientId(id: string): string {
-  return id.replace(/[^a-zA-Z0-9_-]/g, '')
-}
-
-function getMimeType(ext: string): string {
-  const map: Record<string, string> = {
-    '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-    '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif',
-  }
-  return map[ext.toLowerCase()] ?? 'image/png'
-}
+const BUCKET = 'reference-images'
+const MAX_IMAGES = 5
 
 // GET — list reference images for a client
 export async function GET(req: NextRequest) {
@@ -23,18 +11,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'clientId required' }, { status: 400 })
   }
 
-  const dir = path.join(REF_DIR, sanitizeClientId(clientId))
   try {
-    await fs.access(dir)
-    const files = await fs.readdir(dir)
-    const images = files
-      .filter(f => /\.(jpg|jpeg|png|webp|gif)$/i.test(f))
-      .map(f => ({
-        name: f,
-        url: `/reference-images/${sanitizeClientId(clientId)}/${f}`,
-      }))
+    const supabase = await createClient()
+    const { data: files, error } = await supabase.storage
+      .from(BUCKET)
+      .list(clientId, { sortBy: { column: 'created_at', order: 'desc' } })
+
+    if (error) throw new Error(error.message)
+
+    const images = (files ?? [])
+      .filter(f => /\.(jpg|jpeg|png|webp|gif)$/i.test(f.name))
+      .map(f => {
+        const { data: { publicUrl } } = supabase.storage
+          .from(BUCKET)
+          .getPublicUrl(`${clientId}/${f.name}`)
+        return { name: f.name, url: publicUrl }
+      })
+
     return NextResponse.json({ ok: true, images })
-  } catch {
+  } catch (err) {
+    console.error('[ReferenceImages] List error:', err)
     return NextResponse.json({ ok: true, images: [] })
   }
 }
@@ -50,30 +46,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'clientId and file required' }, { status: 400 })
     }
 
-    const safeId = sanitizeClientId(clientId)
-    const dir = path.join(REF_DIR, safeId)
-    await fs.mkdir(dir, { recursive: true })
+    const supabase = await createClient()
 
     // Check existing count (max 5)
-    const existing = await fs.readdir(dir).catch(() => [])
-    const imageFiles = existing.filter(f => /\.(jpg|jpeg|png|webp|gif)$/i.test(f))
-    if (imageFiles.length >= 5) {
+    const { data: existing } = await supabase.storage
+      .from(BUCKET)
+      .list(clientId)
+    const imageFiles = (existing ?? []).filter(f => /\.(jpg|jpeg|png|webp|gif)$/i.test(f.name))
+    if (imageFiles.length >= MAX_IMAGES) {
       return NextResponse.json({ ok: false, error: 'Maximum 5 reference images allowed' }, { status: 400 })
     }
 
-    // Save file
-    const ext = path.extname(file.name) || '.png'
-    const fileName = `ref-${Date.now()}${ext}`
-    const filePath = path.join(dir, fileName)
+    // Upload file
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png'
+    const fileName = `ref-${Date.now()}.${ext}`
+    const storagePath = `${clientId}/${fileName}`
     const buffer = Buffer.from(await file.arrayBuffer())
-    await fs.writeFile(filePath, buffer)
+
+    const { error: uploadErr } = await supabase.storage
+      .from(BUCKET)
+      .upload(storagePath, buffer, { contentType: file.type || 'image/png', upsert: false })
+
+    if (uploadErr) throw new Error(uploadErr.message)
+
+    const { data: { publicUrl } } = supabase.storage
+      .from(BUCKET)
+      .getPublicUrl(storagePath)
 
     return NextResponse.json({
       ok: true,
-      image: {
-        name: fileName,
-        url: `/reference-images/${safeId}/${fileName}`,
-      },
+      image: { name: fileName, url: publicUrl },
     })
   } catch (err) {
     console.error('[ReferenceImages] Upload error:', err)
@@ -91,13 +93,18 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'clientId and fileName required' }, { status: 400 })
     }
 
-    // Prevent path traversal
-    const safeName = path.basename(fileName)
-    const filePath = path.join(REF_DIR, sanitizeClientId(clientId), safeName)
+    const supabase = await createClient()
+    const storagePath = `${clientId}/${fileName}`
 
-    await fs.unlink(filePath)
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .remove([storagePath])
+
+    if (error) throw new Error(error.message)
+
     return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json({ ok: false, error: 'File not found or delete failed' }, { status: 404 })
+  } catch (err) {
+    console.error('[ReferenceImages] Delete error:', err)
+    return NextResponse.json({ ok: false, error: 'Delete failed' }, { status: 500 })
   }
 }

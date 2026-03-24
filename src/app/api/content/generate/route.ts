@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Modality } from '@google/genai'
-import { promises as fs } from 'fs'
-import path from 'path'
+import { createClient as createStorageSupabase } from '@/lib/supabase/server'
 import { withKeyRetry, hasGeminiKeys } from '@/lib/gemini-client'
 import { getGemConfig } from '@/lib/gem-instructions'
 import { loadLocalGemInstructions, loadTextOverlayConfig, loadImageModel } from '@/lib/gem-config-loader'
@@ -55,7 +54,7 @@ BRAND GUIDELINES:
 ${sectorBlock}
 
 SEO KEYWORDS (weave 1-2 naturally into caption): ${input.keywords.join(', ')}
-HASHTAG STRATEGY: Build hashtags using these keywords as primary seeds. Mix: location hashtags (#${input.city.replace(/\s+/g, '')} style), service hashtags derived from keywords, niche discovery hashtags, and 2-3 brand hashtags.
+HASHTAG STRATEGY: Use ONLY 5 high-priority hashtags. Derive them directly from the SEO keywords above — convert each keyword into a hashtag. Prioritize the most relevant and high-search-volume keywords for this specific post topic.
 
 POST DETAILS:
 - Idea: ${input.ideaTitle}
@@ -74,7 +73,7 @@ OUTPUT FORMAT (use these exact delimiters):
 ---CAPTION---
 [full caption text here]
 ---HASHTAGS---
-[15-20 hashtags space-separated — must include keyword-based hashtags, location tags, and niche discovery tags]`
+[exactly 5 hashtags space-separated — derived from SEO keywords, highest priority only]`
 }
 
 export function buildImagePrompt(input: {
@@ -212,24 +211,32 @@ async function fetchLogoAsBase64(url: string): Promise<{ data: string; mimeType:
   }
 }
 
-const REF_DIR = path.join(process.cwd(), 'public', 'reference-images')
-
 async function loadReferenceImages(clientId: string): Promise<Array<{ data: string; mimeType: string }>> {
-  const safeId = clientId.replace(/[^a-zA-Z0-9_-]/g, '')
-  const dir = path.join(REF_DIR, safeId)
   try {
-    await fs.access(dir)
-    const files = await fs.readdir(dir)
-    const imageFiles = files.filter(f => /\.(jpg|jpeg|png|webp|gif)$/i.test(f))
+    const supabase = await createStorageSupabase()
+    const { data: files, error } = await supabase.storage
+      .from('reference-images')
+      .list(clientId, { sortBy: { column: 'created_at', order: 'desc' } })
+
+    if (error || !files) return []
+
+    const imageFiles = files
+      .filter((f: { name: string }) => /\.(jpg|jpeg|png|webp|gif)$/i.test(f.name))
+      .slice(0, 5)
+
+    const mimeMap: Record<string, string> = {
+      jpg: 'image/jpeg', jpeg: 'image/jpeg',
+      png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+    }
+
     const results: Array<{ data: string; mimeType: string }> = []
-    for (const f of imageFiles.slice(0, 5)) {
-      const filePath = path.join(dir, f)
-      const buffer = await fs.readFile(filePath)
-      const ext = path.extname(f).toLowerCase()
-      const mimeMap: Record<string, string> = {
-        '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-        '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif',
-      }
+    for (const f of imageFiles) {
+      const { data: blob, error: dlErr } = await supabase.storage
+        .from('reference-images')
+        .download(`${clientId}/${f.name}`)
+      if (dlErr || !blob) continue
+      const buffer = Buffer.from(await blob.arrayBuffer())
+      const ext = f.name.split('.').pop()?.toLowerCase() ?? 'png'
       results.push({ data: buffer.toString('base64'), mimeType: mimeMap[ext] ?? 'image/png' })
     }
     return results
@@ -471,7 +478,8 @@ export async function POST(req: NextRequest) {
         if (imagePart?.inlineData) {
           const { data, mimeType } = imagePart.inlineData
           if (data && mimeType) {
-            imageUrl = `data:${mimeType};base64,${data}`
+            let finalBase64 = data
+            let finalMimeType = mimeType
 
             // Programmatic Devanagari text overlay (only if enabled — currently disabled, AI handles text)
             try {
@@ -483,11 +491,43 @@ export async function POST(req: NextRequest) {
                   (dish, map, fallback) =>
                     lookupTagline(dish, Object.keys(map).length > 0 ? map : ANNABRAHMA_PHRASES, fallback),
                 )
-                imageUrl = await applyDevanagariOverlay(imageUrl, mimeType, overlayConfig, oDishName, oTagline)
+                const overlaidUri = await applyDevanagariOverlay(
+                  `data:${mimeType};base64,${data}`, mimeType, overlayConfig, oDishName, oTagline,
+                )
+                const match = overlaidUri.match(/^data:([^;]+);base64,(.+)$/)
+                if (match) {
+                  finalMimeType = match[1]
+                  finalBase64 = match[2]
+                }
               }
             } catch (overlayErr) {
-              console.error('[Overlay] Failed, returning raw Gemini image:', overlayErr)
-              // Graceful degradation — imageUrl remains the original Gemini image
+              console.error('[Overlay] Failed, using raw Gemini image:', overlayErr)
+            }
+
+            // Upload to Supabase Storage (fallback to data URI if upload fails)
+            try {
+              const storageClient = await createStorageSupabase()
+              const ext = finalMimeType === 'image/png' ? 'png' : 'jpg'
+              const storagePath = `${clientId}/${entryId ?? Date.now()}.${ext}`
+              const buffer = Buffer.from(finalBase64, 'base64')
+
+              const { error: uploadErr } = await storageClient.storage
+                .from('generated-images')
+                .upload(storagePath, buffer, { contentType: finalMimeType, upsert: true })
+
+              if (!uploadErr) {
+                const { data: { publicUrl } } = storageClient.storage
+                  .from('generated-images')
+                  .getPublicUrl(storagePath)
+                imageUrl = publicUrl
+                console.log(`[Storage] Uploaded image: ${storagePath}`)
+              } else {
+                console.error('[Storage] Upload failed, using data URI fallback:', uploadErr.message)
+                imageUrl = `data:${finalMimeType};base64,${finalBase64}`
+              }
+            } catch (storageErr) {
+              console.error('[Storage] Error, using data URI fallback:', storageErr)
+              imageUrl = `data:${finalMimeType};base64,${finalBase64}`
             }
           }
         } else {
@@ -506,8 +546,7 @@ export async function POST(req: NextRequest) {
     // Save to calendar entry if entryId provided
     if (entryId) {
       try {
-        const { createClient: createServerClient } = await import('@/lib/supabase/server')
-        const supabase = await createServerClient()
+        const supabase = await createStorageSupabase()
         await supabase
           .from('content_calendar')
           .update({
