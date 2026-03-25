@@ -4,18 +4,20 @@ import { Header } from '@/components/layout/header'
 import { ClientAvatar } from '@/components/ui/client-avatar'
 import type { Client, BrandingProfile, ContentIdea, ContentCalendarEntry, SOP, ContentPlatform } from '@/types'
 import { cn, currentMonthYear } from '@/lib/utils'
-import { Calendar, Sparkles } from 'lucide-react'
+import { Calendar, Sparkles, History } from 'lucide-react'
 import { CalendarTab } from '@/components/content/calendar-tab'
 import { GenerateTab } from '@/components/content/generate-tab'
+import { HistoryTab } from '@/components/content/history-tab'
 import {
   startOfMonth, endOfMonth, eachDayOfInterval, format, parseISO,
 } from 'date-fns'
 
-type Tab = 'calendar' | 'generate'
+type Tab = 'calendar' | 'generate' | 'history'
 
 const TABS: { key: Tab; label: string; icon: typeof Calendar }[] = [
   { key: 'calendar', label: 'Content Calendar', icon: Calendar },
   { key: 'generate', label: 'Generate & Preview', icon: Sparkles },
+  { key: 'history', label: 'Generation History', icon: History },
 ]
 
 interface ContentStudioPageProps {
@@ -266,6 +268,12 @@ export default function ContentStudioPage({
                     ...prev.filter(e => !(e.client_id === selectedClientId && e.month_year === monthYear)),
                   ])
                 }}
+              />
+            )}
+            {activeTab === 'history' && (
+              <HistoryTab
+                clientId={selectedClientId}
+                calendar={allCalendar.filter(e => e.client_id === selectedClientId)}
               />
             )}
           </div>
