@@ -465,3 +465,16 @@ export interface ContentCalendarEntry {
 export const CONTENT_PLATFORMS: ContentPlatform[] = ['Instagram', 'Facebook', 'GBP', 'WhatsApp']
 export const CONTENT_IDEA_STATUSES: ContentIdeaStatus[] = ['idea', 'approved', 'rejected']
 export const CONTENT_CALENDAR_STATUSES: ContentCalendarStatus[] = ['draft', 'generated', 'approved', 'published']
+
+// ============================================================
+// Calendar Occasion Types
+// ============================================================
+
+export type OccasionCategory = 'festival' | 'occasion' | 'industry' | 'sports'
+
+export interface CalendarOccasion {
+  name: string
+  date: string          // YYYY-MM-DD
+  description: string
+  category: OccasionCategory
+}

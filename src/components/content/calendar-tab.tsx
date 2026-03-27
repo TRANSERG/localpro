@@ -1,6 +1,6 @@
 'use client'
-import { useState, useMemo } from 'react'
-import type { ContentCalendarEntry, ContentIdea, ContentPlatform } from '@/types'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import type { ContentCalendarEntry, ContentIdea, ContentPlatform, CalendarOccasion } from '@/types'
 import { PlatformBadge, StatusBadge } from './platform-badge'
 import { ChevronLeft, ChevronRight, X, Sparkles, CalendarPlus, Loader2, RefreshCw, PenLine } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -36,6 +36,13 @@ const STATUS_DOTS: Record<string, string> = {
   published: 'bg-green-500',
 }
 
+const OCCASION_COLORS: Record<string, { dot: string; bg: string; text: string }> = {
+  festival: { dot: 'bg-orange-500', bg: 'bg-orange-50', text: 'text-orange-700' },
+  occasion: { dot: 'bg-pink-500', bg: 'bg-pink-50', text: 'text-pink-700' },
+  industry: { dot: 'bg-sky-500', bg: 'bg-sky-50', text: 'text-sky-700' },
+  sports:   { dot: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+}
+
 export function CalendarTab({
   clientId,
   calendar,
@@ -52,7 +59,25 @@ export function CalendarTab({
     open: boolean
     date?: string
     entry?: ContentCalendarEntry
+    occasions?: CalendarOccasion[]
   }>({ open: false })
+
+  // Occasion data for calendar display
+  const [occasions, setOccasions] = useState<CalendarOccasion[]>([])
+
+  useEffect(() => {
+    const [y, m] = monthYear.split('-').map(Number)
+    if (!y || !m) return
+    fetch(`/api/content/occasions?year=${y}&month=${m}`)
+      .then(r => r.json())
+      .then(json => { if (json.ok) setOccasions(json.occasions ?? []) })
+      .catch(() => setOccasions([]))
+  }, [monthYear])
+
+  const getOccasionsForDay = useCallback((date: Date): CalendarOccasion[] => {
+    const dateStr = format(date, 'yyyy-MM-dd')
+    return occasions.filter(o => o.date === dateStr)
+  }, [occasions])
 
   const currentDate = useMemo(() => parseISO(monthYear + '-01'), [monthYear])
   const monthStart = startOfMonth(currentDate)
@@ -205,11 +230,18 @@ export function CalendarTab({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 px-1">
+      <div className="flex items-center gap-4 px-1 flex-wrap">
         {Object.entries(STATUS_DOTS).map(([status, color]) => (
           <div key={status} className="flex items-center gap-1.5">
             <div className={cn('h-2 w-2 rounded-full', color)} />
             <span className="text-[10px] text-gray-500 capitalize">{status}</span>
+          </div>
+        ))}
+        <div className="w-px h-3 bg-gray-200" />
+        {Object.entries(OCCASION_COLORS).map(([cat, colors]) => (
+          <div key={cat} className="flex items-center gap-1.5">
+            <div className={cn('h-2 w-2 rounded-full', colors.dot)} />
+            <span className="text-[10px] text-gray-500 capitalize">{cat}</span>
           </div>
         ))}
       </div>
@@ -229,17 +261,20 @@ export function CalendarTab({
 
           {days.map(day => {
             const entries = getEntriesForDay(day)
+            const dayOccasions = getOccasionsForDay(day)
             const isToday = isSameDay(day, new Date())
             const hasEntries = entries.length > 0
+            const hasOccasion = dayOccasions.length > 0
             return (
               <div
                 key={day.toISOString()}
                 className={cn(
                   'min-h-[96px] border-b border-r border-gray-100 p-1.5 cursor-pointer hover:bg-blue-50/40 transition-colors relative',
                   isToday && 'bg-blue-50/60',
-                  hasEntries && !isToday && 'bg-white',
+                  hasOccasion && !isToday && 'bg-amber-50/30',
+                  hasEntries && !isToday && !hasOccasion && 'bg-white',
                 )}
-                onClick={() => setEntryModal({ open: true, date: format(day, 'yyyy-MM-dd') })}
+                onClick={() => setEntryModal({ open: true, date: format(day, 'yyyy-MM-dd'), occasions: dayOccasions })}
               >
                 <div className="flex items-center justify-between mb-1">
                   <div className={cn(
@@ -257,11 +292,34 @@ export function CalendarTab({
                   )}
                 </div>
 
+                {/* Occasion badges */}
+                {hasOccasion && (
+                  <div className="space-y-0.5 mb-0.5">
+                    {dayOccasions.slice(0, 2).map(occ => {
+                      const colors = OCCASION_COLORS[occ.category] ?? OCCASION_COLORS.occasion
+                      return (
+                        <div
+                          key={occ.name}
+                          className={cn('flex items-center gap-1 rounded px-1 py-0.5 text-[9px] font-medium truncate', colors.bg, colors.text)}
+                          title={`${occ.name} — ${occ.description}`}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', colors.dot)} />
+                          <span className="truncate">{occ.name}</span>
+                        </div>
+                      )
+                    })}
+                    {dayOccasions.length > 2 && (
+                      <span className="text-[8px] text-gray-400 pl-1">+{dayOccasions.length - 2} more</span>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   {entries.map(entry => (
                     <div
                       key={entry.id}
-                      onClick={e => { e.stopPropagation(); setEntryModal({ open: true, entry }) }}
+                      onClick={e => { e.stopPropagation(); setEntryModal({ open: true, entry, occasions: dayOccasions }) }}
                       className={cn(
                         'rounded-md px-1.5 py-1 text-[10px] font-medium truncate cursor-pointer border-l-2 transition-colors hover:opacity-80',
                         STATUS_COLORS[entry.status] ?? STATUS_COLORS.draft,
@@ -275,7 +333,7 @@ export function CalendarTab({
                   ))}
                 </div>
 
-                {!hasEntries && (
+                {!hasEntries && !hasOccasion && (
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                     <CalendarPlus className="h-4 w-4 text-gray-300" />
                   </div>
@@ -300,6 +358,7 @@ export function CalendarTab({
           prefillDate={entryModal.date}
           clientId={clientId}
           approvedIdeas={approvedIdeas}
+          occasions={entryModal.occasions}
           onSave={handleSaveEntry}
           onDelete={entryModal.entry ? () => handleDeleteEntry(entryModal.entry!.id) : undefined}
           onGenerate={entryModal.entry ? () => { onGenerateForEntry(entryModal.entry!); setEntryModal({ open: false }) } : undefined}
@@ -321,6 +380,7 @@ function CalendarEntryModal({
   prefillDate,
   clientId,
   approvedIdeas,
+  occasions,
   onSave,
   onDelete,
   onGenerate,
@@ -330,6 +390,7 @@ function CalendarEntryModal({
   prefillDate?: string
   clientId: string
   approvedIdeas: ContentIdea[]
+  occasions?: CalendarOccasion[]
   onSave: (data: { content_idea_id: string | null; scheduled_date: string; platform: ContentPlatform; image_ratio: string; notes: string; customIdea?: { title: string; description: string } }) => void
   onDelete?: () => void
   onGenerate?: () => void
@@ -372,10 +433,13 @@ function CalendarEntryModal({
     setSelectedSuggestion(null)
     setSuggestionError(null)
     try {
+      const trendingContext = occasions?.length
+        ? occasions.map(o => `${o.name} — ${o.description}`).join('; ')
+        : undefined
       const res = await fetch('/api/content/generate-ideas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, count: 5 }),
+        body: JSON.stringify({ clientId, count: 5, ...(trendingContext ? { trendingContext } : {}) }),
       })
       const json = await res.json()
       if (!json.ok) throw new Error(json.error)
@@ -415,6 +479,25 @@ function CalendarEntryModal({
         </div>
 
         <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+
+          {/* Occasion banner */}
+          {occasions && occasions.length > 0 && (
+            <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 space-y-1">
+              <p className="text-[10px] font-bold text-orange-700 uppercase tracking-wide">
+                {occasions.length === 1 ? 'Event on this date' : 'Events on this date'}
+              </p>
+              {occasions.map(occ => {
+                const colors = OCCASION_COLORS[occ.category] ?? OCCASION_COLORS.occasion
+                return (
+                  <div key={occ.name} className="flex items-center gap-2">
+                    <span className={cn('h-2 w-2 rounded-full shrink-0', colors.dot)} />
+                    <span className="text-xs font-semibold text-gray-900">{occ.name}</span>
+                    <span className="text-[10px] text-gray-500 truncate">{occ.description}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
 
           {/* Idea source tabs */}
           <div>
