@@ -104,7 +104,21 @@ export function GenerateTab({
     setGemLoading(false)
   }, [clientId, branding?.gem_instructions])
 
-  useEffect(() => { loadGemConfig() }, [loadGemConfig])
+  // ── Reference Images ──
+  const loadRefImages = useCallback(async () => {
+    setRefLoading(true)
+    try {
+      const res = await fetch(`/api/content/reference-images?clientId=${clientId}`)
+      const json = await res.json()
+      if (json.ok) setRefImages(json.images ?? [])
+    } catch { /* ignore */ }
+    setRefLoading(false)
+  }, [clientId])
+
+  // Load gem config + reference images in parallel on every clientId change
+  useEffect(() => {
+    Promise.all([loadGemConfig(), loadRefImages()])
+  }, [loadGemConfig, loadRefImages])
 
   // ── Save Gem Config ──
   async function handleSaveGemConfig() {
@@ -138,19 +152,6 @@ export function GenerateTab({
   }
 
   const gemDirty = gemInstructions !== gemInstructionsSaved
-
-  // ── Reference Images ──
-  const loadRefImages = useCallback(async () => {
-    setRefLoading(true)
-    try {
-      const res = await fetch(`/api/content/reference-images?clientId=${clientId}`)
-      const json = await res.json()
-      if (json.ok) setRefImages(json.images ?? [])
-    } catch { /* ignore */ }
-    setRefLoading(false)
-  }, [clientId])
-
-  useEffect(() => { loadRefImages() }, [loadRefImages])
 
   async function handleRefUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
