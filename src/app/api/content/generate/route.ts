@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Modality } from '@google/genai'
+
+export const maxDuration = 60 // Vercel: allow up to 60s (image generation takes 15-30s)
 import { createClient as createStorageSupabase } from '@/lib/supabase/server'
 import { withKeyRetry, hasGeminiKeys } from '@/lib/gemini-client'
 import { getGemConfig } from '@/lib/gem-instructions'
