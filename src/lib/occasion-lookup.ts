@@ -1,5 +1,3 @@
-import { promises as fs } from 'fs'
-import path from 'path'
 import type { CalendarOccasion, OccasionCategory } from '@/types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -89,15 +87,12 @@ const HOLIDAY_DESCRIPTIONS: Record<string, string> = {
 }
 
 function enrichDescription(name: string, apiDescription: string): string {
-  // Exact match
   if (HOLIDAY_DESCRIPTIONS[name]) return HOLIDAY_DESCRIPTIONS[name]
-  // Partial match
   for (const [key, val] of Object.entries(HOLIDAY_DESCRIPTIONS)) {
     if (name.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(name.toLowerCase())) {
       return val
     }
   }
-  // Fallback to API description, or generic
   if (apiDescription && apiDescription !== 'Optional holiday' && !apiDescription.endsWith('in India')) {
     return apiDescription
   }
@@ -116,18 +111,14 @@ function mapCalendarificCategory(types: string[], primaryType: string): Occasion
   return 'occasion'
 }
 
-// ── API fetch with file cache ─────────────────────────────────────────────────
+// ── In-memory cache (persists across requests within same serverless instance) ─
 
-const OCCASIONS_DIR = path.join(process.cwd(), 'data', 'occasions')
+const memoryCache = new Map<number, CachedHoliday[]>()
 
 async function fetchCalendarificHolidays(year: number): Promise<CachedHoliday[]> {
-  const cacheFile = path.join(OCCASIONS_DIR, `calendarific-cache-${year}.json`)
-
-  // Try reading from cache first
-  try {
-    const cached = await fs.readFile(cacheFile, 'utf-8')
-    return JSON.parse(cached) as CachedHoliday[]
-  } catch { /* no cache yet — fetch */ }
+  // Check in-memory cache first
+  const cached = memoryCache.get(year)
+  if (cached) return cached
 
   const apiKey = process.env.CALENDARIFIC_API_KEY
   if (!apiKey) {
@@ -149,14 +140,13 @@ async function fetchCalendarificHolidays(year: number): Promise<CachedHoliday[]>
 
     const mapped: CachedHoliday[] = holidays.map(h => ({
       name: h.name,
-      date: h.date.iso.split('T')[0],  // ensure YYYY-MM-DD
+      date: h.date.iso.split('T')[0],
       description: enrichDescription(h.name, h.description),
       category: mapCalendarificCategory(h.type, h.primary_type),
     }))
 
-    // Save to cache
-    await fs.mkdir(OCCASIONS_DIR, { recursive: true })
-    await fs.writeFile(cacheFile, JSON.stringify(mapped, null, 2))
+    // Save to in-memory cache
+    memoryCache.set(year, mapped)
     console.log(`[Occasions] Cached ${mapped.length} holidays for ${year}`)
     return mapped
   } catch (err) {
@@ -165,13 +155,52 @@ async function fetchCalendarificHolidays(year: number): Promise<CachedHoliday[]>
   }
 }
 
-async function getLocalOccasions(): Promise<LocalOccasion[]> {
-  try {
-    const raw = await fs.readFile(path.join(OCCASIONS_DIR, 'india.json'), 'utf-8')
-    return JSON.parse(raw) as LocalOccasion[]
-  } catch {
-    return []
-  }
+// ── Local occasions (embedded — no filesystem dependency) ─────────────────────
+
+const LOCAL_OCCASIONS: LocalOccasion[] = [
+  { name: "Valentine's Week", date: '02-07', repeat: 'yearly', category: 'occasion', description: "Valentine's Week begins (Rose Day) — week of love, gifting, romantic experiences, couple content" },
+  { name: "Valentine's Day", date: '02-14', repeat: 'yearly', category: 'occasion', description: "Valentine's Day — love, gifting, romantic experiences, couples, special offers" },
+  { name: 'World Cancer Day', date: '02-04', repeat: 'yearly', category: 'industry', description: 'World Cancer Day — health awareness, early detection, support, community' },
+  { name: 'World Pizza Day', date: '02-09', repeat: 'yearly', category: 'industry', description: 'World Pizza Day — pizza specials, cheesy goodness, food celebration' },
+  { name: "Women's Day", date: '03-08', repeat: 'yearly', category: 'occasion', description: "International Women's Day — empowerment, celebration, appreciation for women, special offers" },
+  { name: 'World Technology Day', date: '05-11', repeat: 'yearly', category: 'industry', description: 'World Technology Day — innovation, digital transformation, tech milestones' },
+  { name: 'World Environment Day', date: '06-05', repeat: 'yearly', category: 'occasion', description: 'World Environment Day — sustainability, green choices, eco-friendly practices' },
+  { name: 'World Yoga Day', date: '06-21', repeat: 'yearly', category: 'industry', description: 'International Yoga Day — wellness, mindfulness, healthy lifestyle, fitness' },
+  { name: 'World Chocolate Day', date: '07-07', repeat: 'yearly', category: 'industry', description: 'World Chocolate Day — indulgence, desserts, sweet treats, chocolate specials' },
+  { name: 'World Emoji Day', date: '07-17', repeat: 'yearly', category: 'occasion', description: 'World Emoji Day — fun, playful content, social media engagement, interactive posts' },
+  { name: 'World Photography Day', date: '08-19', repeat: 'yearly', category: 'occasion', description: 'World Photography Day — visual storytelling, behind-the-scenes, creative content' },
+  { name: 'Teachers Day', date: '09-05', repeat: 'yearly', category: 'occasion', description: 'Teachers Day — gratitude, learning, mentorship, education, appreciation posts' },
+  { name: 'World Coffee Day', date: '10-01', repeat: 'yearly', category: 'industry', description: 'World Coffee Day — perfect for cafes, the love of coffee, brewing rituals, coffee culture' },
+  { name: 'World Food Day', date: '10-16', repeat: 'yearly', category: 'industry', description: 'World Food Day — food culture, sustainability, culinary appreciation' },
+  { name: 'World Mental Health Day', date: '10-10', repeat: 'yearly', category: 'occasion', description: 'World Mental Health Day — wellness, self-care, mental wellbeing awareness' },
+  { name: 'Halloween', date: '10-31', repeat: 'yearly', category: 'occasion', description: 'Halloween — spooky fun, creativity, themed experiences, festive content' },
+  { name: 'World Kindness Day', date: '11-13', repeat: 'yearly', category: 'occasion', description: 'World Kindness Day — community, gratitude, giving back, heartwarming stories' },
+  { name: "Children's Day", date: '11-14', repeat: 'yearly', category: 'occasion', description: "Children's Day (Bal Diwas) — joy, playfulness, nostalgia, family, kids-focused content" },
+  { name: "Mother's Day", date: '2025-05-11', repeat: 'none', category: 'occasion', description: "Mother's Day — appreciation for mothers, gifting, family warmth, special offers" },
+  { name: "Mother's Day", date: '2026-05-10', repeat: 'none', category: 'occasion', description: "Mother's Day — appreciation for mothers, gifting, family warmth, special offers" },
+  { name: "Mother's Day", date: '2027-05-09', repeat: 'none', category: 'occasion', description: "Mother's Day — appreciation for mothers, gifting, family warmth, special offers" },
+  { name: "Mother's Day", date: '2028-05-14', repeat: 'none', category: 'occasion', description: "Mother's Day — appreciation for mothers, gifting, family warmth, special offers" },
+  { name: "Mother's Day", date: '2029-05-13', repeat: 'none', category: 'occasion', description: "Mother's Day — appreciation for mothers, gifting, family warmth, special offers" },
+  { name: "Mother's Day", date: '2030-05-12', repeat: 'none', category: 'occasion', description: "Mother's Day — appreciation for mothers, gifting, family warmth, special offers" },
+  { name: "Father's Day", date: '2025-06-15', repeat: 'none', category: 'occasion', description: "Father's Day — appreciation for fathers, bonding, gifting, special experiences" },
+  { name: "Father's Day", date: '2026-06-21', repeat: 'none', category: 'occasion', description: "Father's Day — appreciation for fathers, bonding, gifting, special experiences" },
+  { name: "Father's Day", date: '2027-06-20', repeat: 'none', category: 'occasion', description: "Father's Day — appreciation for fathers, bonding, gifting, special experiences" },
+  { name: "Father's Day", date: '2028-06-18', repeat: 'none', category: 'occasion', description: "Father's Day — appreciation for fathers, bonding, gifting, special experiences" },
+  { name: "Father's Day", date: '2029-06-17', repeat: 'none', category: 'occasion', description: "Father's Day — appreciation for fathers, bonding, gifting, special experiences" },
+  { name: "Father's Day", date: '2030-06-16', repeat: 'none', category: 'occasion', description: "Father's Day — appreciation for fathers, bonding, gifting, special experiences" },
+  { name: 'Friendship Day', date: '2025-08-03', repeat: 'none', category: 'occasion', description: 'Friendship Day — celebrating bonds, togetherness, friend groups, loyalty' },
+  { name: 'Friendship Day', date: '2026-08-02', repeat: 'none', category: 'occasion', description: 'Friendship Day — celebrating bonds, togetherness, friend groups, loyalty' },
+  { name: 'Friendship Day', date: '2027-08-01', repeat: 'none', category: 'occasion', description: 'Friendship Day — celebrating bonds, togetherness, friend groups, loyalty' },
+  { name: 'Friendship Day', date: '2028-08-06', repeat: 'none', category: 'occasion', description: 'Friendship Day — celebrating bonds, togetherness, friend groups, loyalty' },
+  { name: 'Friendship Day', date: '2029-08-05', repeat: 'none', category: 'occasion', description: 'Friendship Day — celebrating bonds, togetherness, friend groups, loyalty' },
+  { name: 'Friendship Day', date: '2030-08-04', repeat: 'none', category: 'occasion', description: 'Friendship Day — celebrating bonds, togetherness, friend groups, loyalty' },
+  { name: 'IPL 2025', date: '2025-03-21', repeat: 'none', category: 'sports', description: 'IPL cricket season — high energy, team spirit, massive audience, cricket fever across India' },
+  { name: 'IPL 2026', date: '2026-03-20', repeat: 'none', category: 'sports', description: 'IPL cricket season — high energy, team spirit, massive audience, cricket fever across India' },
+  { name: 'FIFA World Cup 2026', date: '2026-06-11', repeat: 'none', category: 'sports', description: 'FIFA World Cup 2026 — global football fever, team support, sports excitement, watch parties' },
+]
+
+function getLocalOccasions(): LocalOccasion[] {
+  return LOCAL_OCCASIONS
 }
 
 // ── Month occasions (for calendar UI) ─────────────────────────────────────────
@@ -179,7 +208,7 @@ async function getLocalOccasions(): Promise<LocalOccasion[]> {
 export async function getOccasionsForMonth(year: number, month: number): Promise<CalendarOccasion[]> {
   const [apiHolidays, localOccasions] = await Promise.all([
     fetchCalendarificHolidays(year),
-    getLocalOccasions(),
+    Promise.resolve(getLocalOccasions()),
   ])
 
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -221,7 +250,6 @@ export async function getOccasionsForMonth(year: number, month: number): Promise
     }
   }
 
-  // Sort by date
   return merged.sort((a, b) => a.date.localeCompare(b.date))
 }
 
@@ -237,7 +265,7 @@ export async function getNearestOccasion(targetDate?: string): Promise<OccasionC
   const [apiHolidays, nextYearHolidays, localOccasions] = await Promise.all([
     fetchCalendarificHolidays(year),
     isYearEnd ? fetchCalendarificHolidays(year + 1) : Promise.resolve<CachedHoliday[]>([]),
-    getLocalOccasions(),
+    Promise.resolve(getLocalOccasions()),
   ])
 
   let nearest: OccasionContext | null = null

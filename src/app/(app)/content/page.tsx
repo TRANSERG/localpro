@@ -4,17 +4,15 @@ import { getGemConfig } from '@/lib/gem-instructions'
 import ContentStudioPage from './client'
 
 export default async function Page() {
-  // Load clients first to get the default client for filtering
-  const clients = await getClients()
-  const resolvedClients = clients.length > 0 ? clients : mockClients
-  const defaultClientId = resolvedClients[0]?.id
-
-  const [brandings, ideas, calendar, sops] = await Promise.all([
+  // Load all data upfront — client-side filters by selected client
+  const [clients, brandings, ideas, calendar, sops] = await Promise.all([
+    getClients(),
     getBrandingProfiles(),
-    getContentIdeas(defaultClientId),
-    getContentCalendar(defaultClientId),
+    getContentIdeas(),
+    getContentCalendar(),
     getSOPs(),
   ])
+  const resolvedClients = clients.length > 0 ? clients : mockClients
 
   const resolvedBrandings = brandings.length > 0 ? brandings : mockBrandingProfiles
   const resolvedIdeas = ideas.length > 0 ? ideas : mockContentIdeas
