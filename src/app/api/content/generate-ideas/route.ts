@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withKeyRetry, hasGeminiKeys } from '@/lib/gemini-client'
+
+export const maxDuration = 30 // Vercel: allow up to 30s for idea generation
 import { getGemConfig } from '@/lib/gem-instructions'
 import { loadLocalGemInstructions } from '@/lib/gem-config-loader'
 import { getNearestOccasion } from '@/lib/occasion-lookup'

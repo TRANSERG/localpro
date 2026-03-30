@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Modality } from '@google/genai'
+
+export const maxDuration = 60 // Vercel: allow up to 60s (image generation takes 15-30s)
 import { createClient as createStorageSupabase } from '@/lib/supabase/server'
 import { withKeyRetry, hasGeminiKeys } from '@/lib/gemini-client'
 import { getGemConfig } from '@/lib/gem-instructions'
@@ -294,11 +296,13 @@ export async function POST(req: NextRequest) {
     const { createClient } = await import('@/lib/supabase/server')
     const supabase = await createClient()
 
-    const { data: client } = await supabase
-      .from('clients')
-      .select('business_name, business_type, city, area, phone, website_url')
-      .eq('id', clientId)
-      .single()
+    // Fetch client, branding, and keywords in parallel — all independent queries
+    const [{ data: client }, { data: branding }, { data: keywordRows }] = await Promise.all([
+      supabase.from('clients').select('business_name, business_type, city, area, phone, website_url').eq('id', clientId).single(),
+      supabase.from('branding_profiles').select('*').eq('client_id', clientId).single(),
+      supabase.from('keywords').select('keyword').eq('client_id', clientId).limit(10),
+    ])
+
     if (!client) {
       return NextResponse.json({ ok: false, error: 'Client not found' }, { status: 404 })
     }
@@ -309,11 +313,6 @@ export async function POST(req: NextRequest) {
     phone = client.phone ?? ''
     websiteUrl = client.website_url ?? ''
 
-    const { data: branding } = await supabase
-      .from('branding_profiles')
-      .select('*')
-      .eq('client_id', clientId)
-      .single()
     if (branding) {
       brandTone = branding.brand_tone ?? 'Professional'
       primaryColor = branding.primary_color ?? '#3b82f6'
@@ -326,11 +325,6 @@ export async function POST(req: NextRequest) {
       gemInstructions = branding.gem_instructions ?? ''
     }
 
-    const { data: keywordRows } = await supabase
-      .from('keywords')
-      .select('keyword')
-      .eq('client_id', clientId)
-      .limit(10)
     keywords = (keywordRows ?? []).map((k: { keyword: string }) => k.keyword)
 
     // Primary: use gem_instructions from client-side (loaded from gem-config API)
@@ -374,14 +368,27 @@ export async function POST(req: NextRequest) {
       sectorContext,
     })
 
-    const { caption, hashtags } = await withKeyRetry(async (ai) => {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: captionPrompt,
-        // gem_instructions are visual/image rules — do NOT use as systemInstruction for caption writing
-      })
-      return parseCaptionResponse(response.text ?? '')
-    })
+    // Run caption generation AND image-prep in parallel (prep hides behind ~3-5s caption wait)
+    const [
+      { caption, hashtags },
+      logoData,
+      referenceImages,
+      overlayConfig,
+      clientImageModel,
+    ] = await Promise.all([
+      withKeyRetry(async (ai) => {
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: captionPrompt,
+          // gem_instructions are visual/image rules — do NOT use as systemInstruction for caption writing
+        })
+        return parseCaptionResponse(response.text ?? '')
+      }),
+      generateImage && logoUrl ? fetchLogoAsBase64(logoUrl) : Promise.resolve(null),
+      generateImage ? loadReferenceImages(clientId) : Promise.resolve<Array<{ data: string; mimeType: string }>>([]),
+      generateImage ? loadTextOverlayConfig(clientId) : Promise.resolve(null),
+      generateImage ? loadImageModel(clientId) : Promise.resolve(null),
+    ])
 
     // Generate image (optional)
     let imageUrl: string | null = null
@@ -390,15 +397,9 @@ export async function POST(req: NextRequest) {
 
     if (generateImage) {
       try {
-        // Fetch logo as base64 if available
-        const logoData = logoUrl ? await fetchLogoAsBase64(logoUrl) : null
-
-        // Load reference images from local storage (Gem-like style references)
-        const referenceImages = await loadReferenceImages(clientId)
-
         // Resolve Marathi text for AI prompt (uses dishNameMap/taglineMap from overlay config)
         let marathiContext: { dishName: string; tagline: string; addressBar: string } | null = null
-        const overlayConfig = await loadTextOverlayConfig(clientId)
+        // overlayConfig, logoData, referenceImages, clientImageModel already resolved above
         if (overlayConfig) {
           const mDishName = resolveDishName(ideaTitle, overlayConfig)
           const mTagline = resolveTagline(
@@ -447,8 +448,6 @@ export async function POST(req: NextRequest) {
           ? gemInstructions + '\n\n' + REALISM_PREAMBLE
           : undefined
 
-        // Per-client image model override (default: flash)
-        const clientImageModel = await loadImageModel(clientId)
         const imageModelName = clientImageModel ?? 'gemini-3-pro-image-preview'
         console.log(`[Generate] Using image model: ${imageModelName} for ${businessName}`)
 

@@ -4,6 +4,7 @@ import { getGemConfig } from '@/lib/gem-instructions'
 import ContentStudioPage from './client'
 
 export default async function Page() {
+  // Load all data upfront — client-side filters by selected client
   const [clients, brandings, ideas, calendar, sops] = await Promise.all([
     getClients(),
     getBrandingProfiles(),
@@ -11,18 +12,19 @@ export default async function Page() {
     getContentCalendar(),
     getSOPs(),
   ])
-
   const resolvedClients = clients.length > 0 ? clients : mockClients
+
   const resolvedBrandings = brandings.length > 0 ? brandings : mockBrandingProfiles
   const resolvedIdeas = ideas.length > 0 ? ideas : mockContentIdeas
   const rawCalendar = calendar.length > 0 ? calendar : mockContentCalendar
   const resolvedSOPs = sops.length > 0 ? sops : mockSOPs
 
-  // Join ideas into calendar entries (mock data doesn't have joined `idea` like Supabase does)
+  // Join ideas into calendar entries using Map for O(1) lookup
+  const ideaById = new Map(resolvedIdeas.map(i => [i.id, i]))
   const resolvedCalendar = rawCalendar.map(entry => {
     if (entry.idea) return entry
     if (!entry.content_idea_id) return entry
-    const idea = resolvedIdeas.find(i => i.id === entry.content_idea_id)
+    const idea = ideaById.get(entry.content_idea_id)
     return idea ? { ...entry, idea } : entry
   })
 
