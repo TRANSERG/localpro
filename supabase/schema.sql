@@ -724,3 +724,25 @@ create policy "service gmb_insights" on public.gmb_insights
   for all to service_role using (true) with check (true);
 create policy "service gmb_business_info" on public.gmb_business_info
   for all to service_role using (true) with check (true);
+
+-- ============================================================
+-- REVIEW ANALYTICS (QR link tracking — replaces file-based storage)
+-- ============================================================
+create table if not exists public.review_analytics (
+  id            uuid primary key default uuid_generate_v4(),
+  client_id     uuid not null unique references public.clients(id) on delete cascade,
+  visits        integer not null default 0,
+  completions   integer not null default 0,
+  ratings       jsonb not null default '{"1":0,"2":0,"3":0,"4":0,"5":0}',
+  last_visit    timestamptz,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+alter table public.review_analytics enable row level security;
+
+create policy "authenticated read review_analytics" on public.review_analytics
+  for select to authenticated using (true);
+
+create policy "service manage review_analytics" on public.review_analytics
+  for all to service_role using (true) with check (true);
